@@ -35,7 +35,7 @@
 // What: "@(#) Timer.h, revA"
 
 #include<Timer.h>
-
+#include<unistd.h>
 #include <bool.h>
 
 #ifndef TIMER_USE_MPIWTIME
