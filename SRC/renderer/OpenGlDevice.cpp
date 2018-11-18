@@ -32,6 +32,7 @@
 #ifdef _GLX
 #define _PNG
 #include <png.h>
+#include <zlib.h>
 #endif
 
 #include <iostream>
