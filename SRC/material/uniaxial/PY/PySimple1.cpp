@@ -57,7 +57,11 @@
 #include "PySimple1.h"
 #include <Vector.h>
 #include <Channel.h>
+#include <Information.h>
+#include <Parameter.h>
+
 #include <elementAPI.h>
+#include <OPS_Globals.h>
 
 // Controls on internal iteration between spring components
 const int PYmaxIterations = 20;
@@ -895,3 +899,39 @@ PySimple1::Print(OPS_Stream &s, int flag)
 
 /////////////////////////////////////////////////////////////////////
 
+int
+PySimple1::setParameter(const char **argv, int argc, Parameter &param)
+{
+    if (strcmp(argv[0],"pult") == 0 || strcmp(argv[0],"fy") == 0 || strcmp(argv[0],"Fy") == 0) {
+        param.setValue(pult);
+        return param.addObject(1, this);
+    }
+    if (strcmp(argv[0],"y50") == 0) {
+        param.setValue(y50);
+        return param.addObject(2, this);
+    }
+    
+    return -1;
+}
+
+int
+PySimple1::updateParameter(int parameterID, Information &info)
+{
+    switch (parameterID) {
+        case -1:
+            return -1;
+        case 1:
+            this->pult = info.theDouble;
+            break;
+        case 2:
+            this->y50 = info.theDouble;
+            break;
+        default:
+            return -1;
+    }
+    
+    // this might not work for all parameters
+    this->revertToLastCommit();
+    
+    return 0;
+}

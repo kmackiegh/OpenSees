@@ -375,5 +375,5 @@ MinMaxMaterial::setParameter(const char **argv, int argc, Parameter &param)
 int
 MinMaxMaterial::updateParameter(int parameterID, Information &info)
 {
-  return 0;
+  return theMaterial->updateParameter(parameterID, info);
 }
