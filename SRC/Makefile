@@ -529,7 +529,6 @@ ELE_LIBS   =  $(FE)/element/Element.o \
 	$(FE)/element/fourNodeQuad/FourNodeQuadWithSensitivity.o \
 	$(FE)/element/fourNodeQuad/ConstantPressureVolumeQuad.o \
 	$(FE)/element/fourNodeQuad/EnhancedQuad.o \
-	$(FE)/element/componentElement/ComponentElement2d.o \
 	$(FE)/element/fourNodeQuad/NineNodeMixedQuad.o \
 	$(FE)/element/shell/ShellMITC4.o \
 	$(FE)/element/shell/ShellMITC4Thermal.o \
@@ -551,6 +550,7 @@ ELE_LIBS   =  $(FE)/element/Element.o \
 	$(FE)/element/adapter/ActuatorCorot.o \
 	$(FE)/element/adapter/Actuator.o \
 	$(FE)/element/adapter/Adapter.o \
+    $(FE)/element/componentElement/ComponentElement2d.o \
 	$(FE)/element/elastomericBearing/ElastomericBearingBoucWen2d.o \
 	$(FE)/element/elastomericBearing/ElastomericBearingBoucWen3d.o \
 	$(FE)/element/elastomericBearing/ElastomericBearingBoucWenMod3d.o \
@@ -770,6 +770,7 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
 	$(FE)/material/uniaxial/backbone/ReeseSandBackbone.o \
 	$(FE)/material/uniaxial/backbone/ManderBackbone.o \
 	$(FE)/material/uniaxial/backbone/RaynorBackbone.o \
+    $(FE)/material/uniaxial/SPSW02.o \
 	$(FE)/material/nD/NDMaterial.o \
 	$(FE)/material/nD/PlaneStressLayeredMaterial.o \
 	$(FE)/material/nD/PlaneStressRebarMaterial.o \
@@ -838,6 +839,8 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
 	$(FE)/material/nD/ElasticIsotropicBeamFiber2d.o \
 	$(FE)/material/nD/ElasticOrthotropicMaterial.o \
 	$(FE)/material/nD/ElasticOrthotropicThreeDimensional.o \
+    $(FE)/material/nD/LowTensionMaterial.o \
+    $(FE)/material/nD/LowTensionPlaneStress.o \
 	$(FE)/material/nD/PlaneStressMaterial.o \
 	$(FE)/material/nD/PlaneStrainMaterial.o \
 	$(FE)/material/nD/PlateFiberMaterial.o \

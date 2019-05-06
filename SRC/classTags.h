@@ -365,6 +365,8 @@
 #define ND_TAG_CPlaneStrain   54
 #define ND_TAG_CPlaneStress2d   55
 #define ND_TAG_CThreeDimensional   55
+#define ND_TAG_LowTension 65
+#define ND_TAG_LowTensionPlaneStress 66
 
 
 #define ND_TAG_FluidSolidPorousMaterial        100

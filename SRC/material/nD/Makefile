@@ -42,6 +42,8 @@ OBJS       = NDMaterial.o \
 	ElasticIsotropicThreeDimensional.o \
 	ElasticOrthotropicMaterial.o \
 	ElasticOrthotropicThreeDimensional.o \
+    LowTensionMaterial.o \
+    LowTensionPlaneStress.o \
 	PressureDependentElastic3D.o \
 	FeapMaterial.o \
 	J2AxiSymm.o \
