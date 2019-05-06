@@ -19,7 +19,7 @@ OBJS       = 	BetaRV.o \
 		ShiftedRayleighRV.o \
 		Type3SmallestValueRV.o \
 		UserDefinedRV.o \
-		PythonRV.o
+#		PythonRV.o
 
 # Compilation control
 
