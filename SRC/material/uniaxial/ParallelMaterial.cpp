@@ -583,3 +583,36 @@ ParallelMaterial::getResponse(int responseID, Information &info)
     return this->UniaxialMaterial::getResponse(responseID, info);
   }
 }
+
+int
+ParallelMaterial::setParameter(const char **argv, int argc, Parameter &param)
+{
+    int outp = -1;
+    
+    // kick the parameter down to all the materials
+    for (int i=0; i<numMaterials; i++) {
+        int ok = 0;
+        ok = theModels[i]->setParameter(argv, argc, param);
+        if (ok != -1)
+            outp = ok;
+    }
+    
+    return outp;
+}
+
+int
+ParallelMaterial::updateParameter(int parameterID, Information &info)
+{
+    int outp = -1;
+    
+    // kick the parameter down to all the materials
+    // not sure this function is necessary or called even?
+    for (int i=0; i<numMaterials; i++) {
+        int ok = 0;
+        ok = theModels[i]->updateParameter(parameterID, info);
+        if (ok != -1)
+            outp = ok;
+    }
+    
+    return outp;
+}

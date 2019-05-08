@@ -35,6 +35,8 @@
 #include <MinMaxMaterial.h>
 #include <ID.h>
 #include <Channel.h>
+#include <Information.h>
+#include <Parameter.h>
 #include <FEM_ObjectBroker.h>
 
 #include <OPS_Globals.h>
@@ -366,14 +368,39 @@ MinMaxMaterial::Print(OPS_Stream &s, int flag)
 int
 MinMaxMaterial::setParameter(const char **argv, int argc, Parameter &param)
 {
-  //
-  // I suppose epsMin and epsMax could be parameters, but not for now -- MHS
-  // 
-  return theMaterial->setParameter(argv, argc, param);
+    // belongs to MinMaxMaterial
+    if (strcmp(argv[0],"maxStrain") == 0) {
+        param.setValue(maxStrain);
+        return param.addObject(1,this);
+    }
+    if (strcmp(argv[0],"minStrain") == 0) {
+        param.setValue(minStrain);
+        return param.addObject(2,this);
+    }
+    
+    // pass to wrapped material
+    return theMaterial->setParameter(argv, argc, param);
 }
   
 int
 MinMaxMaterial::updateParameter(int parameterID, Information &info)
 {
-  return theMaterial->updateParameter(parameterID, info);
+    switch (parameterID) {
+        case -1:
+            return -1;
+        case 1:
+            // here we use same value for max and min assuming symmetric
+            this->maxStrain = info.theDouble;
+            this->minStrain = -info.theDouble;
+            break;
+        case 2:
+            this->minStrain = info.theDouble;
+            break;
+        default:
+            return -1;
+    }
+    
+    // not sure we ever get here, or whether this is even necessary?
+    //return theMaterial->updateParameter(parameterID, info);
+    return 0;
 }

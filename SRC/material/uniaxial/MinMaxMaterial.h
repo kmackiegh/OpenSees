@@ -78,6 +78,11 @@ class MinMaxMaterial : public UniaxialMaterial
 
 	bool Tfailed;
 	bool Cfailed;
+    
+    // AddingSensitivity:BEGIN //////////////////////////////////////////
+    int parameterID;
+    Matrix *SHVs;
+    // AddingSensitivity:END ///////////////////////////////////////////
 };
 
 
