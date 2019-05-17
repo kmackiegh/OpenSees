@@ -1450,7 +1450,7 @@ TclReliabilityModelBuilder_addLimitState(ClientData clientData, Tcl_Interp *inte
 
   if (theFunctionEvaluator != 0 && argc > 2) {
     opserr << "ERROR: A limit-state function should not be created after the GFunEvaluator has been instantiated." << endln;
-    return TCL_ERROR;
+    //return TCL_ERROR;
   }
 
   // GET INPUT PARAMETER (integer)
