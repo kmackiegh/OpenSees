@@ -136,7 +136,6 @@ RELIABILITY_OBJS = $(FE)/domain/pattern/DiscretizedRandomProcessSeries.o \
 		$(FE)/reliability/domain/distributions/ShiftedRayleighRV.o \
 		$(FE)/reliability/domain/distributions/Type3SmallestValueRV.o \
 		$(FE)/reliability/domain/distributions/UserDefinedRV.o \
-#		$(FE)/reliability/domain/distributions/PythonRV.o \
 		$(FE)/reliability/domain/functionEvaluator/FunctionEvaluator.o \
 		$(FE)/reliability/domain/functionEvaluator/TclEvaluator.o \
 		$(FE)/reliability/domain/performanceFunction/PerformanceFunction.o \
@@ -163,6 +162,7 @@ RELIABILITY_OBJS = $(FE)/domain/pattern/DiscretizedRandomProcessSeries.o \
 		$(FE)/reliability/domain/filter/DeltaFilter.o \
         $(FE)/reliability/domain/storage/ReliabilityStorage.o \
         $(FE)/reliability/domain/storage/FORMStorage.o \
+        $(FE)/reliability/domain/storage/SimulationStorage.o \
 		$(FE)/reliability/FEsensitivity/SensitivityAlgorithm.o \
 		$(FE)/reliability/tcl/TclReliabilityBuilder.o 
 

@@ -40,6 +40,9 @@
 #include <RandomNumberGenerator.h>
 #include <RandomVariable.h>
 #include <NormalRV.h>
+#include <SimulationStorage.h>
+#include <ReliabilityStorage.h>
+
 #include <Vector.h>
 #include <Matrix.h>
 #include <MatrixOperations.h>
@@ -58,38 +61,66 @@ using std::setiosflags;
 
 
 ImportanceSamplingAnalysis::ImportanceSamplingAnalysis(ReliabilityDomain *passedReliabilityDomain,
-                                                       Domain *passedOpenSeesDomain,
-										ProbabilityTransformation *passedProbabilityTransformation,
-										FunctionEvaluator *passedGFunEvaluator,
-										RandomNumberGenerator *passedRandomNumberGenerator,
-							Tcl_Interp *passedInterp,
+                                    Domain *passedOpenSeesDomain,
+									ProbabilityTransformation *passedProbabilityTransformation,
+									FunctionEvaluator *passedGFunEvaluator,
+									RandomNumberGenerator *passedRandomNumberGenerator,
 							long int passedNumberOfSimulations,
                             double passedTargetCOV, double passedSamplingStdv,
 							int passedPrintFlag, TCL_Char *passedFileName,
 							int passedAnalysisTypeTag)
-:ReliabilityAnalysis(), theReliabilityDomain(passedReliabilityDomain), 
-theOpenSeesDomain(passedOpenSeesDomain)
+:ReliabilityAnalysis()
 {
+    theReliabilityDomain = passedReliabilityDomain;
+    theOpenSeesDomain = passedOpenSeesDomain;
 	theProbabilityTransformation = passedProbabilityTransformation;
 	theGFunEvaluator = passedGFunEvaluator;
 	theRandomNumberGenerator = passedRandomNumberGenerator;
-	interp = passedInterp;
-	numberOfSimulations = passedNumberOfSimulations;
+	
+    numberOfSimulations = passedNumberOfSimulations;
 	targetCOV = passedTargetCOV;
 	samplingStdv = passedSamplingStdv;
 	printFlag = passedPrintFlag;
 	strcpy(fileName,passedFileName);
 	analysisTypeTag = passedAnalysisTypeTag;
+    
+    storage = 0;
+    numLsf = 0;
 }
-
-
 
 
 ImportanceSamplingAnalysis::~ImportanceSamplingAnalysis()
 {
-
+    if (storage != 0) {
+        for (int i = 0; i < numLsf; i++)
+            if (storage[i] != 0)
+                delete storage[i];
+        
+        delete [] storage;
+    }
 }
 
+
+int
+ImportanceSamplingAnalysis::initStorage()
+{
+    // initialize storage
+    storage = new ReliabilityStorage *[numLsf];
+    if (storage == 0) {
+        opserr << "ImportanceSamplingAnalysis:: failed to allocate storage pointers" << endln;
+        exit(-1);
+    }
+    
+    for (int i = 0; i < numLsf; i++) {
+        storage[i] = new SimulationStorage();
+        if (storage[i] == 0) {
+            opserr << "ImportanceSamplingAnalysis:: failed to get create SimulationStorage" << endln;
+            exit(-1);
+        }
+    }
+    
+    return 0;
+}
 
 
 int 
@@ -117,13 +148,11 @@ ImportanceSamplingAnalysis::analyze(void)
 
 	det_covariance = pow(samplingStdv, numRV);
 
-
 	// Pre-compute some factors to minimize computations inside simulation loop
 	static const double twopi = 2.0*acos(-1.0);
 	double factor1 = 1.0 / ( pow(twopi,0.5*numRV));
 	//double factor2 = 1.0 / ( pow(twopi,0.5*numRV) * sqrt(det_covariance) );
 	double factor2 = factor1 / sqrt(det_covariance);
-
 
 	Vector sum_q(numLsf);
 	Vector sum_q_squared(numLsf);
@@ -133,7 +162,6 @@ ImportanceSamplingAnalysis::analyze(void)
 	char restartFileName[256];
 	sprintf(restartFileName,"%s_%s","restart",fileName);
     
-
 	if (analysisTypeTag == 1) {
 		// Possible read data from file if this is a restart simulation
 		if (printFlag == 2) {
@@ -189,7 +217,6 @@ ImportanceSamplingAnalysis::analyze(void)
 	    return -1;
     }
 
-    
 	// Initial declarations
 	Vector cov_of_q_bar(numLsf);
 	Vector q_bar(numLsf);
@@ -208,10 +235,8 @@ ImportanceSamplingAnalysis::analyze(void)
 	double temp2, denumerator;
 	bool FEconvergence;
 
-
 	// Prepare output file
 	ofstream resultsOutputFile( fileName, ios::out );
-
 
 	bool isFirstSimulation = true;
 	while( ( k <= numberOfSimulations && govCov > targetCOV || k <= 2 ) ) {
@@ -222,7 +247,6 @@ ImportanceSamplingAnalysis::analyze(void)
 			opserr << "Sample #" << myString << ":" << endln;
 		}
 
-		
 		// Create array of standard normal random numbers
 		if (isFirstSimulation) {
 			result = theRandomNumberGenerator->generate_nIndependentStdNormalNumbers(numRV,seed);
@@ -260,7 +284,6 @@ ImportanceSamplingAnalysis::analyze(void)
             theParam->update( x(j) );
         }
 		
-        
         // set values in the variable namespace
         if (theGFunEvaluator->setVariables() < 0) {
             opserr << "ImportanceSamplingAnalysis::analyze() - " << endln
@@ -276,7 +299,6 @@ ImportanceSamplingAnalysis::analyze(void)
             opserr << "ERROR ImportanceSamplingAnalysis -- error running analysis" << endln;
 			FEconvergence = false;
 		}
-
 
 		LimitStateFunctionIter &lsfIter = theReliabilityDomain->getLimitStateFunctions();
 		LimitStateFunction *theLimitStateFunction;
@@ -297,7 +319,6 @@ ImportanceSamplingAnalysis::analyze(void)
             if (!FEconvergence) {
 				gFunctionValue = -1.0;
 			}
-
 			
 			// ESTIMATION OF FAILURE PROBABILITY
 			if (analysisTypeTag == 1) {
@@ -311,7 +332,6 @@ ImportanceSamplingAnalysis::analyze(void)
 					I = 0;
 				}
 
-
 				// Compute values of joint distributions at the u-point
 				phi = factor1 * exp( -0.5 * (u ^ u) );
 				//temp1 = inv_covariance ^ (u-startPointY);
@@ -324,13 +344,10 @@ ImportanceSamplingAnalysis::analyze(void)
 				temp2 /= samplingStdv*samplingStdv;
 				h   = factor2 * exp( -0.5 * temp2 );
 
-
 				// Update sums
 				q = I * phi / h;
 				sum_q(lsf) = sum_q(lsf) + q;
 				sum_q_squared(lsf) = sum_q_squared(lsf) + q*q;
-
-
 
 				if (sum_q(lsf) > 0.0) {
 					// Compute coefficient of variation (of pf)
@@ -403,12 +420,9 @@ ImportanceSamplingAnalysis::analyze(void)
 		}
 
 		// Now all the limit-state functions have been looped over
-
-
 		if (analysisTypeTag == 3) {
 			resultsOutputFile << endln;
 		}
-
 
 		// Possibly compute correlation coefficient
 		if (analysisTypeTag == 2) {
@@ -445,13 +459,11 @@ ImportanceSamplingAnalysis::analyze(void)
 			}
 		}
 
-		
 		// Make sure the cov isn't exactly zero; that could be the case if only failures
 		// occur in cases where the 'q' remains 1
 		if (govCov == 0.0) {
 			govCov = 999.0;
 		}
-
 
 		// Print to the restart file, if requested. 
 		if (printFlag == 2) {
@@ -474,7 +486,6 @@ ImportanceSamplingAnalysis::analyze(void)
 	// Step 'k' back a step now that we went out
 	k--;
 	opserr << endln;
-
 
 	if (analysisTypeTag != 3) {
 
@@ -500,66 +511,61 @@ ImportanceSamplingAnalysis::analyze(void)
 				resultsOutputFile << "#######################################################################" << endln << endln << endln;
 			}
 			else {
-
-				// Some declarations
-				double beta_sim, pf_sim, cov_sim;
-				int num_sim;
-
-
-				// Set tag of "active" limit-state function
-				theReliabilityDomain->setTagOfActiveLimitStateFunction(lsfTag);
-
-
-				// Store results
-				if (analysisTypeTag == 1) {
-					beta_sim = -aStdNormRV.getInverseCDFvalue(q_bar(lsf));
-					pf_sim	 = q_bar(lsf);
-					cov_sim	 = cov_of_q_bar(lsf);
-					num_sim  = k;
-					// Use a recorder -- MHS 10/7/2011
-					/*
-					theLimitStateFunction->setSIM_beta(beta_sim);
-					theLimitStateFunction->setSIM_pfsim(pf_sim);
-					theLimitStateFunction->setSIM_pfcov(cov_sim);
-					theLimitStateFunction->setSIM_numsim(num_sim);
-					*/
-				}
-
-
+                
 				// Print results to the output file
 				if (analysisTypeTag == 1) {
+                    // Some declarations
+                    double beta_sim, pf_sim, cov_sim;
+                    int num_sim;
+                    
+                    beta_sim = -aStdNormRV.getInverseCDFvalue(q_bar(lsf));
+                    pf_sim     = q_bar(lsf);
+                    cov_sim     = cov_of_q_bar(lsf);
+                    num_sim  = k;
+                    
 					resultsOutputFile << "#######################################################################" << endln;
 					resultsOutputFile << "#  SAMPLING ANALYSIS RESULTS, LIMIT-STATE FUNCTION NUMBER   "
 						<<setiosflags(ios::left)<<setprecision(1)<<setw(4)<<lsfTag <<"      #" << endln;
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#  Reliability index beta: ............................ " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<beta_sim 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<beta_sim<< "  #" << endln;
 					resultsOutputFile << "#  Estimated probability of failure pf_sim: ........... " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<pf_sim 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<pf_sim<< "  #" << endln;
 					resultsOutputFile << "#  Number of simulations: ............................. " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<num_sim 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<num_sim<< "  #" << endln;
 					resultsOutputFile << "#  Coefficient of variation (of pf): .................. " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<cov_sim 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<cov_sim<< "  #" << endln;
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#######################################################################" << endln << endln << endln;
+                    
+                    // Store results
+                    theGFunEvaluator->setResponseVariable("betaIS", lsfTag, beta_sim);
+                    theGFunEvaluator->setResponseVariable("pfIS", lsfTag, pf_sim);
+                    theGFunEvaluator->setResponseVariable("covIS", lsfTag, cov_sim);
+                    theGFunEvaluator->setResponseVariable("nsimIS", lsfTag, num_sim);
+                    
 				}
 				else {
+                    // Some declarations
+                    double qbar_sim, rstdv_sim;
+                    
+                    qbar_sim     = q_bar(lsf);
+                    rstdv_sim    = responseStdv(lsf);
+                    
 					resultsOutputFile << "#######################################################################" << endln;
 					resultsOutputFile << "#  SAMPLING ANALYSIS RESULTS, LIMIT-STATE FUNCTION NUMBER   "
 						<<setiosflags(ios::left)<<setprecision(1)<<setw(4)<<lsfTag <<"      #" << endln;
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#  Estimated mean: .................................... " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<q_bar(lsf) 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<qbar_sim<< "  #" << endln;
 					resultsOutputFile << "#  Estimated standard deviation: ...................... " 
-						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<responseStdv(lsf) 
-						<< "  #" << endln;
+						<<setiosflags(ios::left)<<setprecision(5)<<setw(12)<<rstdv_sim<< "  #" << endln;
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#######################################################################" << endln << endln << endln;
+                    
+                    // Store results
+                    theGFunEvaluator->setResponseVariable("qbarIS", lsfTag, qbar_sim);
+                    theGFunEvaluator->setResponseVariable("rstdvIS", lsfTag, rstdv_sim);
 				}
 			}
 		}

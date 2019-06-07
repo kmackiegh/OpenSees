@@ -1,7 +1,8 @@
 include ../../../../Makefile.def
 
 OBJS       = 	ReliabilityStorage.o \
-	FORMStorage.o
+	FORMStorage.o \
+	SimulationStorage.o
 
 
 # Compilation control
