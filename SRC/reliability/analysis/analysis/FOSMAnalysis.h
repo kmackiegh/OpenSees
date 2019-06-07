@@ -39,10 +39,9 @@
 #include <Domain.h>
 #include <FunctionEvaluator.h>
 #include <GradientEvaluator.h>
-#include <Matrix.h>
-#include <Vector.h>
-#include <tcl.h>
+#include <ReliabilityStorage.h>
 
+#include <tcl.h>
 #include <fstream>
 using std::ofstream;
 
@@ -54,11 +53,12 @@ public:
                  Domain *theOpenSeesDomain,
                  FunctionEvaluator *theGFunEvaluator,
                  GradientEvaluator *theGradGEvaluator,
-                 Tcl_Interp *theTclInterp,
                  TCL_Char *fileName);
 	~FOSMAnalysis();
 
-	int analyze(void);
+    int initStorage();
+    int analyze();
+    int getStorage(const char *variable, int lsfTag, Vector &stuff);
 
 protected:
 
@@ -67,8 +67,11 @@ private:
     Domain *theOpenSeesDomain;
 	FunctionEvaluator *theGFunEvaluator;
 	GradientEvaluator *theGradGEvaluator;
-	Tcl_Interp *theTclInterp;
-	char fileName[256];
+	
+    char fileName[256];
+    int numLsf;
+    
+    ReliabilityStorage **storage;
 };
 
 #endif

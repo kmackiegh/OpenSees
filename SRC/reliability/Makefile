@@ -162,6 +162,7 @@ RELIABILITY_OBJS = $(FE)/domain/pattern/DiscretizedRandomProcessSeries.o \
 		$(FE)/reliability/domain/filter/DeltaFilter.o \
         $(FE)/reliability/domain/storage/ReliabilityStorage.o \
         $(FE)/reliability/domain/storage/FORMStorage.o \
+        $(FE)/reliability/domain/storage/FOSMStorage.o \
         $(FE)/reliability/domain/storage/SimulationStorage.o \
 		$(FE)/reliability/FEsensitivity/SensitivityAlgorithm.o \
 		$(FE)/reliability/tcl/TclReliabilityBuilder.o 

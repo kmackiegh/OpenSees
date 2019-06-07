@@ -36,6 +36,9 @@
 #include <ReliabilityDomain.h>
 #include <FunctionEvaluator.h>
 #include <GradientEvaluator.h>
+#include <FOSMStorage.h>
+#include <ReliabilityStorage.h>
+
 #include <Matrix.h>
 #include <Vector.h>
 
@@ -60,23 +63,52 @@ FOSMAnalysis::FOSMAnalysis(ReliabilityDomain *passedReliabilityDomain,
                            Domain *passedOpenSeesDomain,
                            FunctionEvaluator *passedGFunEvaluator,
                            GradientEvaluator *passedGradGEvaluator,
-                           Tcl_Interp *passedTclInterp,
                            TCL_Char *passedFileName)
-:ReliabilityAnalysis(), theReliabilityDomain(passedReliabilityDomain), 
-theOpenSeesDomain(passedOpenSeesDomain)
+:ReliabilityAnalysis()
 {
+    theReliabilityDomain = passedReliabilityDomain;
+    theOpenSeesDomain = passedOpenSeesDomain;
 	theGFunEvaluator	= passedGFunEvaluator;
 	theGradGEvaluator   = passedGradGEvaluator;
-	theTclInterp		= passedTclInterp;
 	strcpy(fileName,passedFileName);
+    
+    storage = 0;
+    numLsf = 0;
 }
 
 
 FOSMAnalysis::~FOSMAnalysis()
 {
-
+    if (storage != 0) {
+        for (int i = 0; i < numLsf; i++)
+            if (storage[i] != 0)
+                delete storage[i];
+        
+        delete [] storage;
+    }
 }
 
+
+int
+FOSMAnalysis::initStorage()
+{
+    // initialize storage
+    storage = new ReliabilityStorage *[numLsf];
+    if (storage == 0) {
+        opserr << "FOSMAnalysis:: failed to allocate storage pointers" << endln;
+        exit(-1);
+    }
+    
+    for (int i = 0; i < numLsf; i++) {
+        storage[i] = new FOSMStorage();
+        if (storage[i] == 0) {
+            opserr << "FOSMAnalysis:: failed to get create FOSMStorage" << endln;
+            exit(-1);
+        }
+    }
+    
+    return 0;
+}
 
 
 int 
@@ -101,7 +133,6 @@ FOSMAnalysis::analyze(void)
 	// Establish vector of standard deviations
 	Vector stdvVector(nrv);
     
-
     // set start point to be the mean for FOSM
     for (int j = 0; j < nrv; j++) {
         RandomVariable *theRV = theReliabilityDomain->getRandomVariablePtrFromIndex(j);
@@ -114,8 +145,7 @@ FOSMAnalysis::analyze(void)
         // now we should update the parameter value
         theParam->update( meanVector(j) );
     }
-        
-        
+    
 	// Perform analysis using mean vector
 	Vector meanEstimates(numLsf);
     
@@ -242,8 +272,16 @@ FOSMAnalysis::analyze(void)
         }
 
 		importance /= importance.Norm();
-
 	
+        // store key results using function evaluator
+        RandomVariable *theRV;
+        for (int j = 0; j < nrv; j++) {
+            theRV = theReliabilityDomain->getRandomVariablePtrFromIndex(j);
+            int rvTag = theRV->getTag();
+            theGFunEvaluator->setResponseVariable("alphaFOSM", lsfTag, rvTag, importance(j));
+        }
+        theGFunEvaluator->setResponseVariable("betaFOSM", lsfTag, meanEstimates(lsf)/responseStdv(lsf));
+        
 		// Print FOSM results to the output file
 		outputFile << "#######################################################################" << endln;
 		outputFile << "#  FOSM ANALYSIS RESULTS, LIMIT-STATE FUNCTION NUMBER   "
@@ -362,3 +400,19 @@ FOSMAnalysis::analyze(void)
 	return 0;
 }
 
+
+int
+FOSMAnalysis::getStorage(const char *variable, int lsfTag, Vector &stuff)
+{
+    int lsf = theReliabilityDomain->getLimitStateFunctionIndex(lsfTag);
+    Information relOut;
+    
+    int tempres = storage[lsf]->getVariable(variable,relOut);
+    //check for tempres error
+    
+    Vector temp(relOut.getData());
+    stuff = temp;
+    stuff = relOut.getData();
+    
+    return 0;
+}

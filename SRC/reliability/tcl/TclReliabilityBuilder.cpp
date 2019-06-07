@@ -3804,8 +3804,8 @@ TclReliabilityModelBuilder_runFOSMAnalysis(ClientData clientData, Tcl_Interp *in
 
 
 	theFOSMAnalysis = new FOSMAnalysis( theReliabilityDomain, theStructuralDomain,
-											theFunctionEvaluator, theGradientEvaluator,
-											interp, argv[1]);
+                                        theFunctionEvaluator, theGradientEvaluator,
+										argv[1]);
 
 	if (theFOSMAnalysis == 0) {
 		opserr << "ERROR: could not create theFOSMAnalysis \n";
