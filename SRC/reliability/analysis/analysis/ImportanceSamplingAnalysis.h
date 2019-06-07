@@ -35,6 +35,7 @@
 
 #include <ReliabilityAnalysis.h>
 #include <ReliabilityDomain.h>
+#include <ReliabilityStorage.h>
 #include <Domain.h>
 #include <ProbabilityTransformation.h>
 #include <RandomNumberGenerator.h>
@@ -50,20 +51,17 @@ class ImportanceSamplingAnalysis : public ReliabilityAnalysis
 public:
 	ImportanceSamplingAnalysis(ReliabilityDomain *passedReliabilityDomain,
                                Domain *passedOpenSeesDomain,
-				   ProbabilityTransformation *passedProbabilityTransformation,
-				   FunctionEvaluator *passedGFunEvaluator,
-				   RandomNumberGenerator *passedRandomNumberGenerator,
-				   Tcl_Interp *passedInterp,
+                               ProbabilityTransformation *passedProbabilityTransformation,
+                               FunctionEvaluator *passedGFunEvaluator,
+                               RandomNumberGenerator *passedRandomNumberGenerator,
 				   long int passedNumberOfSimulations,
-				   double passedTargetCOV,
-				   double samplingStdv,
-				   int printFlag,
-				   TCL_Char *fileName,
-				   int analysisTypeTag);
-	
+				   double passedTargetCOV, double samplingStdv,
+				   int printFlag, TCL_Char *fileName, int analysisTypeTag);
 	~ImportanceSamplingAnalysis();
 	
-	int analyze(void);
+    int initStorage();
+    int analyze();
+    int getStorage(const char *variable, int lsfTag, Vector &stuff);
 
 protected:
 	
@@ -73,13 +71,16 @@ private:
 	ProbabilityTransformation *theProbabilityTransformation;
 	FunctionEvaluator *theGFunEvaluator;
 	RandomNumberGenerator *theRandomNumberGenerator;
-	Tcl_Interp *interp;
+	
 	long int numberOfSimulations;
 	double targetCOV;
 	double samplingStdv;
 	int printFlag;
 	char fileName[256];
 	int analysisTypeTag;
+    int numLsf;
+    
+    ReliabilityStorage **storage;
 };
 
 #endif
