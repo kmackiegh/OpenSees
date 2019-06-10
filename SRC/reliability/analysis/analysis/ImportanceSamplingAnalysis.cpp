@@ -492,16 +492,24 @@ ImportanceSamplingAnalysis::analyze(void)
 		if (!failureHasOccured) {
 			opserr << "WARNING: Failure did not occur for any of the limit-state functions. " << endln;
 		}
-
+        
+        // loop over limit state functions
 		LimitStateFunctionIter &lsfIter = theReliabilityDomain->getLimitStateFunctions();
 		LimitStateFunction *theLimitStateFunction;
 		for (int lsf = 0; lsf < numLsf; lsf++ ) {
 		//while ((theLimitStateFunction = lsfIter()) != 0) {
             theLimitStateFunction = theReliabilityDomain->getLimitStateFunctionPtrFromIndex(lsf);
             int lsfTag = theLimitStateFunction->getTag();
+            
+            // Some declarations
+            double beta_sim = 10;
+            double pf_sim = 0;
+            double cov_sim = 1.0;
+            int num_sim = k;
+            double qbar_sim = 0;
+            double rstdv_sim = 0;
 
 			if ( q_bar(lsf) == 0.0 ) {
-
 				resultsOutputFile << "#######################################################################" << endln;
 				resultsOutputFile << "#  SAMPLING ANALYSIS RESULTS, LIMIT-STATE FUNCTION NUMBER   "
 					<<setiosflags(ios::left)<<setprecision(1)<<setw(4)<<lsfTag <<"      #" << endln;
@@ -514,10 +522,7 @@ ImportanceSamplingAnalysis::analyze(void)
                 
 				// Print results to the output file
 				if (analysisTypeTag == 1) {
-                    // Some declarations
-                    double beta_sim, pf_sim, cov_sim;
-                    int num_sim;
-                    
+                    // store useful quantities in variables
                     beta_sim = -aStdNormRV.getInverseCDFvalue(q_bar(lsf));
                     pf_sim     = q_bar(lsf);
                     cov_sim     = cov_of_q_bar(lsf);
@@ -538,17 +543,9 @@ ImportanceSamplingAnalysis::analyze(void)
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#######################################################################" << endln << endln << endln;
                     
-                    // Store results
-                    theGFunEvaluator->setResponseVariable("betaIS", lsfTag, beta_sim);
-                    theGFunEvaluator->setResponseVariable("pfIS", lsfTag, pf_sim);
-                    theGFunEvaluator->setResponseVariable("covIS", lsfTag, cov_sim);
-                    theGFunEvaluator->setResponseVariable("nsimIS", lsfTag, num_sim);
-                    
 				}
 				else {
-                    // Some declarations
-                    double qbar_sim, rstdv_sim;
-                    
+                    // store useful quantities in variables
                     qbar_sim     = q_bar(lsf);
                     rstdv_sim    = responseStdv(lsf);
                     
@@ -563,11 +560,20 @@ ImportanceSamplingAnalysis::analyze(void)
 					resultsOutputFile << "#                                                                     #" << endln;
 					resultsOutputFile << "#######################################################################" << endln << endln << endln;
                     
-                    // Store results
-                    theGFunEvaluator->setResponseVariable("qbarIS", lsfTag, qbar_sim);
-                    theGFunEvaluator->setResponseVariable("rstdvIS", lsfTag, rstdv_sim);
 				}
 			}
+            
+            // Store results
+            if (analysisTypeTag == 1) {
+                theGFunEvaluator->setResponseVariable("betaIS", lsfTag, beta_sim);
+                theGFunEvaluator->setResponseVariable("pfIS", lsfTag, pf_sim);
+                theGFunEvaluator->setResponseVariable("covIS", lsfTag, cov_sim);
+                theGFunEvaluator->setResponseVariable("nsimIS", lsfTag, num_sim);
+            }
+            else {
+                theGFunEvaluator->setResponseVariable("qbarIS", lsfTag, qbar_sim);
+                theGFunEvaluator->setResponseVariable("rstdvIS", lsfTag, rstdv_sim);
+            }
 		}
 
 		if (analysisTypeTag == 2) {
