@@ -166,8 +166,6 @@ mom1n(m1n), rot1n(r1n), mom3n(m2n), rot3n(r2n)
 	  exit(-1);
 	}
 
-				      
-
 	energyA = 0.5 * (rot1p*mom1p + (rot3p-rot1p)*(mom3p+mom1p) +
 		rot1n*mom1n + (rot3n-rot1n)*(mom3n+mom1n));
 
@@ -292,9 +290,11 @@ HystereticMaterial::positiveIncrement(double dStrain)
 		}
 	}
 
-  TloadIndicator = 1;
+    TloadIndicator = 1;
 
 	TrotMax = (TrotMax > rot1p) ? TrotMax : rot1p;
+    if (TrotMax > POS_INF_STRAIN)
+        TrotMax = POS_INF_STRAIN;
 
 	double maxmom = posEnvlpStress(TrotMax);
 	double rotlim = negEnvlpRotlim(CrotMin);
@@ -377,9 +377,11 @@ HystereticMaterial::negativeIncrement(double dStrain)
 		}
 	}
 
-  TloadIndicator = 2;
+    TloadIndicator = 2;
 
 	TrotMin = (TrotMin < rot1n) ? TrotMin : rot1n;
+    if (TrotMin < NEG_INF_STRAIN)
+        TrotMin = NEG_INF_STRAIN;
 
 	double minmom = negEnvlpStress(TrotMin);
 	double rotlim = posEnvlpRotlim(CrotMax);

@@ -3525,26 +3525,22 @@ TclReliabilityModelBuilder_addStartPoint(ClientData clientData, Tcl_Interp *inte
 	}
 
 	int nrv = theReliabilityDomain->getNumberOfRandomVariables();
-	RandomVariable *aRandomVariable;
-
+	RandomVariable *theRV;
+    Parameter *theParam;
 
 	// GET INPUT PARAMETER (string) AND CREATE THE OBJECT
 	if (strcmp(argv[1],"Mean") == 0) {
-
 		RandomVariableIter rvIter = theReliabilityDomain->getRandomVariables();
-		while ((aRandomVariable = rvIter()) != 0) {
-            //int tag = aRandomVariable->getTag();
-            double mean = aRandomVariable->getMean();
-            aRandomVariable->setStartValue(mean);
+		while ((theRV = rvIter()) != 0) {
+            double mean = theRV->getMean();
+            theRV->setStartValue(mean);
 		}
 	}
     
 	else if (strcmp(argv[1],"Origin") == 0) {
-		
         RandomVariableIter rvIter = theReliabilityDomain->getRandomVariables();
-        while ((aRandomVariable = rvIter()) != 0) {
-            //int tag = aRandomVariable->getTag();
-            aRandomVariable->setStartValue(0.0);
+        while ((theRV = rvIter()) != 0) {
+            theRV->setStartValue(0.0);
         }
 	}
     
@@ -3566,17 +3562,25 @@ TclReliabilityModelBuilder_addStartPoint(ClientData clientData, Tcl_Interp *inte
 			opserr << "ERROR: No entries in the file read by startPoint!" << endln;
 			return TCL_ERROR;
 		}
-		if (numEntries != nrv) {
+		if (numEntries != 2*nrv) {
 			opserr << "ERROR: Wrong number of entries in the file read by startPoint." << endln;
 			return TCL_ERROR;
 		}
 
 		// rewind the file and pass values to the RVs
+        inputFile.clear();
         inputFile.seekg(0, ios::beg);
+        int dumint = 0;
         for (int i = 0; i < nrv; i++) {
-            aRandomVariable = theReliabilityDomain->getRandomVariablePtrFromIndex(i);
+            inputFile >> dumint;
+            theRV = theReliabilityDomain->getRandomVariablePtr(dumint);
 			inputFile >> dummy;
-            aRandomVariable->setStartValue(dummy);
+            if (theRV != 0)
+                theRV->setStartValue(dummy);
+            else {
+                opserr << "ERROR: startPoint could not find RV with tag " << dumint << endln;
+                return TCL_ERROR;
+            }
 		}
         
 		inputFile.close();
