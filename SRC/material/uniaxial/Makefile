@@ -113,6 +113,7 @@ OBJS       = UniaxialMaterial.o \
 	SteelECThermal.o \
 	DamperMaterial.o \
 	MaterialState.o \
+	Inerter.o \
 	OOHystereticMaterial.o \
 	SPSW02.o \
         TclModelBuilderUniaxialMaterialCommand.o
