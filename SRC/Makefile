@@ -475,6 +475,7 @@ ELE_LIBS   =  $(FE)/element/Element.o \
 	$(FE)/element/zeroLength/ZeroLengthContactNTS2D.o \
 	$(FE)/element/zeroLength/ZeroLengthInterface2D.o \
 	$(FE)/element/zeroLength/ZeroLengthRocking.o \
+	$(FE)/element/zeroLength/InerterElement.o \
 	$(FE)/element/surfaceLoad/SurfaceLoad.o \
 	$(FE)/element/surfaceLoad/TriSurfaceLoad.o \
 	$(FE)/element/UWelements/SimpleContact2D.o \
@@ -773,7 +774,6 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
 	$(FE)/material/uniaxial/backbone/ManderBackbone.o \
 	$(FE)/material/uniaxial/backbone/RaynorBackbone.o \
     $(FE)/material/uniaxial/SPSW02.o \
-    $(FE)/material/uniaxial/Inerter.o \
 	$(FE)/material/nD/NDMaterial.o \
 	$(FE)/material/nD/PlaneStressLayeredMaterial.o \
 	$(FE)/material/nD/PlaneStressRebarMaterial.o \
