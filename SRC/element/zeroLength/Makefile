@@ -11,6 +11,7 @@ OBJS       = ZeroLength.o \
 	CoupledZeroLength.o \
 	ZeroLengthImpact3D.o \
 	ZeroLengthVG_HG.o \
+	InerterElement.o \
 	TclZeroLength.o
 
 

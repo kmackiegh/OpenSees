@@ -94,6 +94,7 @@ extern  void *OPS_ElasticTubularJoint(void);
 extern void *OPS_ZeroLengthContactNTS2D(void);
 extern void *OPS_ZeroLengthVG_HG(void);
 extern void *OPS_ZeroLengthInterface2D(void);
+extern void *OPS_InerterElement(void);
 extern "C" void *OPS_PY_Macro2D(void);
 extern void *OPS_SimpleContact2D(void);
 extern void *OPS_SimpleContact3D(void);
@@ -218,6 +219,11 @@ TclModelBuilder_addZeroLengthContact3D(ClientData, Tcl_Interp *, int, TCL_Char *
 extern int
 TclModelBuilder_addZeroLengthRocking(ClientData, Tcl_Interp *, int, TCL_Char **,
                                        Domain*, TclModelBuilder *);
+
+// KRM added for inerter element
+extern int
+TclModelBuilder_addInerterElement(ClientData, Tcl_Interp *, int, TCL_Char **,
+                                     Domain*, TclModelBuilder *);
 
 // MHS
 extern int
