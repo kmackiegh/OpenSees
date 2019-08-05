@@ -81,7 +81,7 @@ OPS_NewExponentialTS(void)
 ExponentialTS::ExponentialTS
 (int tag, int classTag, double d1, double d2, double s1, double s2)
   :NDMaterial(tag, classTag), 
-delt(d1), deltn(d2), tau_max(s1), sig_max(s2)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2)
 {
     // do some input checks
     if (delt < 0)
@@ -101,7 +101,7 @@ delt(d1), deltn(d2), tau_max(s1), sig_max(s2)
 ExponentialTS::ExponentialTS
 (int tag, double d1, double d2, double s1, double s2)
   :NDMaterial(tag, ND_TAG_ExponentialTS),
-delt(d1), deltn(d2), tau_max(s1), sig_max(s2)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2)
 {
     // derived properties
     phit = delt*tau_max/sqrt(2/exp(1));
@@ -364,7 +364,7 @@ ExponentialTS::Print (OPS_Stream &s, int flag)
 }
 
 void
-ExponentialTS::Shear_Envlp (double Deln, double Delt,
+ExponentialTS::Shear_Envlp (double Delt, double Deln,
                             double &Tt, double &ETt, double &ETn)
 {
     // shear monotonic envelope function
@@ -386,7 +386,7 @@ ExponentialTS::Shear_Envlp (double Deln, double Delt,
 }
 
 void
-ExponentialTS::Normal_Envlp (double Deln, double Delt,
+ExponentialTS::Normal_Envlp (double Delt, double Deln,
                              double &Tn, double &ENt, double &ENn)
 {
     // shear monotonic envelope function

@@ -30,23 +30,20 @@ Matrix ExponentialTS2D::tangent(2,2);
 Vector ExponentialTS2D::state(4);
 
 ExponentialTS2D::ExponentialTS2D
-(int tag, double E, double Eh, double Es,
- double nu, double fc, double ftc, double ftm,
- double shr, double fres, double fcu, double epscu, double rat,
- double rho, double tlim) :
+(int tag, double d1, double d2, double s1, double s2) :
  ExponentialTS (tag, ND_TAG_ExponentialTS2D,
-                E, Eh, Es, nu, fc, ftc, ftm, shr, fres, fcu, epscu, rat, rho, tlim),
+                d1, d2, s1, s2),
  sigma(2), D(2,2), epsilon(2),
- Cepsilon(2), Cstress(2), Ctangent(2)
+ Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
 
 ExponentialTS2D::ExponentialTS2D():
  ExponentialTS (0, ND_TAG_ExponentialTS2D,
-                0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                0.0, 0.0, 0.0, 0.0),
 sigma(2), D(2,2), epsilon(2),
-Cepsilon(2), Cstress(2), Ctangent(2)
+Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
@@ -66,59 +63,24 @@ ExponentialTS2D::initialize(void)
     
     Cepsilon.Zero();
     Cstress.Zero();
-    Ctangent.Zero();
-    
-    double d = E/(1.0-nu*nu); 
-    D(0,0) = d;
-    D(0,1) = nu*d;
-    D(1,0) = D(0,1);
-    D(1,1) = d;
-    D(2,2) = 0.5*(1.0-nu)*d;
-    
-    // set the new orthotropic constants
-    G = E/(2.0*(1.0+nu));
-    E1 = E;
-    E2 = E;
-    G12 = G;
-    nu12 = nu;
-    nu21 = nu;
-    rnu = 1;
-    rG = shr;
     
     // initialize stress
-    sig1 = 0;
-    sig2 = 0;
-    tau = 0;
+    sigt = 0;
+    sign = 0;
+    ETt = 0;
+    ETn = 0;
+    ENt = 0;
+    ENn = 0;
+    Shear_Envlp(0,0,sigt,ETt,ETn);
+    Normal_Envlp(0,0,sign,ENt,ENn);
     
-    // initialize angles, th_cr needs to be outside of -pi
-    th = 0.0;
-    th_cr = -1.5*3.1416;
-    cracker = 0;
-    
-    // check stress values for consistency
-    if (ftc > ftm) {
-        opserr << "ExponentialTS2D::initialize()" << endln;
-        opserr << "cannot have ftc > ftm, setting them to be equal" << endln;
-        ftc = ftm;
-    }
-    
-    if (fres > ftm) {
-        opserr << "ExponentialTS2D::initialize()" << endln;
-        opserr << "cannot have fres > ftm, setting them to be equal" << endln;
-        fres = ftm;
-    }
-    
-    // just for book keeping, make sure compression values are negative
-    if (fc > 0)
-        fc = -fc;
-    if (fcu > 0)
-        fcu = -fcu;
-    if (epscu > 0)
-        epscu = -epscu;
-    
-    // Es must be negative
-    if (Es > 0)
-        Es = -Es;
+    // populate matrices
+    sigma(0) = sigt;
+    sigma(1) = sign;
+    D(0,0) = ETt;
+    D(0,1) = ETn;
+    D(1,0) = ENt;
+    D(1,1) = ENn;
     
     return 0;
 }
@@ -129,62 +91,20 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     epsilon = strain;
     Vector deps = epsilon - Cepsilon;
     
-    if (cracker == 0) {
-        // uncracked
-        sigma = D * epsilon;
-        
-        // compute trial stress using elastic tangent
-        //double eps0 = deps(0);
-        //double eps1 = deps(1);
-        //double eps2 = deps(2);
-        
-        //sigma(0) = Cstress(0) + D(0,0)*eps0 + D(0,1)*eps1 + D(0,2)*eps2;
-        //sigma(1) = Cstress(1) + D(1,0)*eps0 + D(1,1)*eps1 + D(1,2)*eps2;
-        //sigma(2) = Cstress(2) + D(2,0)*eps0 + D(2,1)*eps1 + D(2,2)*eps2;
-        
-        // update principal stress and strain
-        this->rotate_principal();
-        
-        // send principal directions to the constitutive models
-        //setUniaxialStrain(0,sig1,E1);
-        //setUniaxialStrain(1,sig2,E2);
-        
-        // update crack status
-        this->update_principal();
-        
-    } else {
-        // cracked
-        
-        // update principal stress and strain
-        this->rotate_principal();
-        
-        // send principal directions to the constitutive models
-        setUniaxialStrain(0,sig1,E1);
-        setUniaxialStrain(1,sig2,E2);
+    // trial stress
+    sigma = Cstress + D*deps;
     
-        // first principal direction
-        nu12 = E1/E*nu;
-        if (nu12 < 0)
-            nu12 = 0;
-        G12 = G*rG;
-        
-        // second principal direction
-        nu21 = E2/E*nu;
-        if (nu21 < 0)
-            nu21 = 0;
-        G12 = G*rG;
-        
-        // add back shear stress
-        tau = G12;
-        
-        // update tangent and stress
-        this->update_tangent();
-    }
+    // send to materials
+    Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
+    Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
     
-    // save tangent terms for later
-    Ctangent(0) = E1;
-    Ctangent(1) = E2;
-    Ctangent(2) = G12;
+    // path independent for now
+    sigma(0) = sigt;
+    sigma(1) = sign;
+    D(0,0) = ETt;
+    D(0,1) = ETn;
+    D(1,0) = ENt;
+    D(1,1) = ENn;
     
     return 0;
 }
@@ -198,7 +118,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain, const Vector &rate)
 int
 ExponentialTS2D::setTrialStrainIncr (const Vector &strain)
 {
-    static Vector newStrain(3);
+    static Vector newStrain(2);
     newStrain = epsilon + strain;
     
     return this->setTrialStrain(newStrain);
@@ -220,7 +140,23 @@ ExponentialTS2D::getTangent (void)
 const Matrix&
 ExponentialTS2D::getInitialTangent (void)
 {
-    return this->getTangent();
+    sigt = 0;
+    sign = 0;
+    ETt = 0;
+    ETn = 0;
+    ENt = 0;
+    ENn = 0;
+    Shear_Envlp(0,0,sigt,ETt,ETn);
+    Normal_Envlp(0,0,sign,ENt,ENn);
+    
+    // populate matrices
+    D(0,0) = ETt;
+    D(0,1) = ETn;
+    D(1,0) = ENt;
+    D(1,1) = ENn;
+    
+    tangent = D;
+    return tangent;
 }
 
 const Vector&
@@ -241,25 +177,8 @@ ExponentialTS2D::getState (void)
 {
     double pi = acos(-1.0);
     
-    // compute principal cracking strain if cracked (otherwise returns zero)
-    if (th_cr < -pi) {
-        //crack_strain.Zero();
-    } else {
-        // crack_strain is in the principal axes but technically should also have the shear term
-        Vector deps = epsilon;
-        double st = sin(th_cr);
-        double ct = cos(th_cr);
-        
-        //crack_strain(0) = deps(0)*ct*ct + deps(1)*st*st + deps(2)*st*ct;
-        //crack_strain(1) = deps(0)*st*st + deps(1)*ct*ct - deps(2)*st*ct;
-        //crack_strain(2) = 2.0*(deps(1)-deps(0))*st*ct + deps(2)*(ct*ct-st*st);
-    }
+    // NYI
     
-    // store quantities in output vector
-    //state(0) = sigprin(0);
-    //state(1) = sigprin(1);
-    state(2) = th_cr;
-    state(2) = th;
     
     return state;
 }
@@ -279,9 +198,6 @@ ExponentialTS2D::revertToLastCommit (void)
     epsilon = Cepsilon;
     sigma = Cstress;
     
-    // note that the constant E1, E2, etc may have been modified, don't have a way to
-    // return them here directly other than recomputing the stress terms
-    
     return 0;
 }
 
@@ -297,9 +213,7 @@ NDMaterial*
 ExponentialTS2D::getCopy (void)
 {
     ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), E, Eh, Es,
-                               nu, fc, ftc, ftm, shr, fres, fcu, epscu, rat,
-                               rho, tlim);
+        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max);
   
     theCopy->sigma = sigma;
     theCopy->D = D;
@@ -307,7 +221,6 @@ ExponentialTS2D::getCopy (void)
     
     theCopy->Cepsilon = Cepsilon;
     theCopy->Cstress = Cstress;
-    theCopy->Ctangent = Ctangent;
     
     return theCopy;
 }
@@ -328,30 +241,14 @@ int
 ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 {
     opserr << "ExponentialTS2D::sendSelf()" << endln;
-    static Vector data(21);
+    static Vector data(5);
   
     // note this is incomplete, should send other vectors as well?
     data(0) = this->getTag();
-    data(1) = E;
-    data(2) = Eh;
-    data(3) = Es;
-    data(4) = nu;
-    data(5) = fc;
-    data(6) = ftc;
-    data(7) = ftm;
-    data(8) = shr;
-    data(9) = fres;
-    data(10) = fcu;
-    data(11) = epscu;
-    data(12) = rat;
-    data(13) = rho;
-    data(14) = tlim;
-    data(15) = Cepsilon(0);
-    data(16) = Cepsilon(1);
-    data(17) = Cepsilon(2);
-    data(18) = Cepsilon(3);
-    data(19) = Cepsilon(4);
-    data(20) = Cepsilon(5);
+    data(1) = Cepsilon(0);
+    data(2) = Cepsilon(1);
+    data(3) = Cstress(0);
+    data(4) = Cstress(1);
   
     int res = theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -367,7 +264,7 @@ ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
 					FEM_ObjectBroker &theBroker)
 {
     opserr << "ExponentialTS2D::recvSelf()" << endln;
-    static Vector data(21);
+    static Vector data(5);
   
     int res = theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -376,245 +273,13 @@ ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
     }
 
     this->setTag((int)data(0));
-    E = data(1);
-    Eh = data(2);
-    Es = data(3);
-    nu = data(4);
-    fc = data(5);
-    ftc = data(6);
-    ftm = data(7);
-    shr = data(8);
-    fres = data(9);
-    fcu = data(10);
-    epscu = data(11);
-    rat = data(12);
-    rho = data(13);
-    tlim = data(14);
-    epsilon(0)=data(15);
-    epsilon(1)=data(16);
-    epsilon(2)=data(17);
-    epsilon(3)=data(18);
-    epsilon(4)=data(19);
-    epsilon(5)=data(20);
+    Cepsilon(0)=data(1);
+    Cepsilon(1)=data(2);
+    Cstress(2)=data(3);
+    Cstress(3)=data(4);
 
-    Cepsilon = epsilon;
+    epsilon = Cepsilon;
+    stress = Cstress;
 
     return res;
-}
-
-int
-ExponentialTS2D::rotate_principal(void)
-{
-    // current stress theta on interval [-pi,+pi] radians
-    th = 0.5*atan2(sigma(2),(sigma(0)-sigma(1))/2.0);
-    
-    if (cracker == 0) {
-        // uncracked
-        double detr = sqrt( 0.25*pow(sigma(0)-sigma(1),2) + sigma(2)*sigma(2) );
-        //sigprin(0) = (sigma(0)+sigma(1))/2.0 + detr;
-        //sigprin(1) = (sigma(0)+sigma(1))/2.0 - detr;
-        //sigprin(2) = 0;
-        
-        // through isotropic behavior
-        //epsprin(0) = sigprin(0)/E;
-        //epsprin(1) = sigprin(1)/E;
-        //epsprin(2) = 0;
-        //opserr << "epsprin from sigprin = (" << epsprin(0) << ", " << epsprin(1) << ") and from actual computation (";
-        
-        // through actual plane strain
-        //detr = sqrt( 0.25*pow(epsilon(0)-epsilon(1),2) + 0.25*epsilon(2)*epsilon(2) );
-        //epsprin(0) = (epsilon(0)+epsilon(1))/2.0 + detr;
-        //epsprin(1) = (epsilon(0)+epsilon(1))/2.0 - detr;
-        //opserr << epsprin(0) << ", " << epsprin(1) << ")" << endln;
-        
-    } else {
-        // cracked
-        double st = sin(th_cr);
-        double ct = cos(th_cr);
-        
-        //sigprin(0) = sigma(0)*ct*ct + sigma(1)*st*st + 2.0*sigma(2)*st*ct;
-        //sigprin(1) = sigma(0)*st*st + sigma(1)*ct*ct - 2.0*sigma(2)*st*ct;
-        //sigprin(2) = -(sigma(0)-sigma(1))*st*ct + sigma(2)*(ct*ct-st*st);
-        
-        // these are just rotated stresses, not actually principal (there is a shear too)
-        //sigprin(0) = (sigma(0)+sigma(1))/2.0 + (sigma(0)-sigma(1))/2.0*cos(2*th_cr) + sigma(2)*sin(2*th_cr);
-        //sigprin(1) = (sigma(0)+sigma(1))/2.0 - (sigma(0)-sigma(1))/2.0*cos(2*th_cr) - sigma(2)*sin(2*th_cr);
-        
-        //epsprin(0) = epsilon(0)*ct*ct + epsilon(1)*st*st + epsilon(2)*st*ct;
-        //epsprin(1) = epsilon(0)*st*st + epsilon(1)*ct*ct - epsilon(2)*st*ct;
-        //epsprin(2) = 2.0*(epsilon(1)-epsilon(0))*st*ct + epsilon(2)*(ct*ct-st*st);
-        //opserr << "after cracking sigprin = (" << sigprin(0) << ", " << sigprin(1) << ") and epsprin = (" << epsprin(0) << ", " << epsprin(1) << ")" << endln;
-        //epsprin(0) = (epsilon(0)+epsilon(1))/2.0 + (epsilon(0)-epsilon(1))/2.0*cos(2*th_cr) + epsilon(2)*sin(2*th_cr);
-        //epsprin(1) = (epsilon(0)+epsilon(1))/2.0 - (epsilon(0)-epsilon(1))/2.0*cos(2*th_cr) - epsilon(2)*sin(2*th_cr);
-    }
-    
-    return 0;
-}
-
-int
-ExponentialTS2D::update_principal(void)
-{
-    double pi = acos(-1.0);
-    
-    // compute cracking angle to check if there was a limit specified
-    // any tlim is considered out of range if > 90 or < -90. Tolerance
-    // is 4 degrees on either side of tlim. Note only tlim is in degrees.
-    int allow_change = 1;
-    if (fabs(tlim) <= 90.0) {
-        if ( fabs(tlim - th*180.0/pi) < 4.0 )
-            allow_change = 1;
-        else
-            allow_change = 0;
-    }
-    
-    return 0;
-}
-
-int
-ExponentialTS2D::update_tangent(void)
-{
-    // update cracked terms
-    D.Zero();
-    D(0,0) = 1.0/E1;
-    D(0,1) = -nu21/E2;
-    D(1,0) = -nu12/E1;
-    D(1,1) = 1.0/E2;
-    D(2,2) = 1.0/G12;
-
-    D.Invert(D);
-    
-    // transformation matrix
-    Matrix TT(3,3);
-    double cc=cos(th_cr);
-    double ss=sin(th_cr);
-    
-    if (cracker == 0) {
-        cc=cos(th);
-        ss=sin(th);
-    }
-    
-    TT(0,0) = cc*cc;
-    TT(0,1) = ss*ss;
-    TT(0,2) = 2.0*ss*cc;
-    TT(1,0) = ss*ss;
-    TT(1,1) = cc*cc;
-    TT(1,2) = -2.0*ss*cc;
-    TT(2,0) = -ss*cc;
-    TT(2,1) = ss*cc;
-    TT(2,2) = cc*cc-ss*ss;
-
-    Matrix temp = D*TT;
-
-    // change back to the global system
-    TT.Invert(TT);
-	D = TT * temp;
-    
-    // stress terms
-    Vector temps(3);
-    temps(0) = sig1;
-    temps(1) = sig2;
-    temps(2) = tau;
-    sigma = TT * temps;
-    
-    return 0;
-}
-
-int
-ExponentialTS2D::setUniaxialStrain(int indx, double &sig, double &e)
-{
-    // indx is the index into the vectors of stored quantities in each principal direction
-    double ec0 = E;
-    
-    // calculate current strain
-    double eps = 0;
-    double deps = eps;
-    
-    // default values
-    sig = ec0 * deps;
-    e = ec0;
-    
-    // if the current strain is less than the smallest previous strain
-    // call the monotonic envelope in compression and reset minimum strain
-    if (eps < 0) {
-        //opserr << "   compression envelope with ecmin = " << ecmin(indx) << endln;
-        this->Comp_Envlp(eps, sig, e);
-    
-    } else {
-        // else, if the current strain is between the minimum strain and ept
-        // (which corresponds to zero stress) the material is in the unloading-
-        // reloading branch and the stress remains between sigmin and sigmax
-        double epsr = (fcu - rat * ec0 * epscu) / (ec0 * (1.0 - rat));
-        double sigmr = ec0 * epsr;
-        
-        // calculate the previous minimum stress sigmm from the minimum
-        // previous strain ecmin and the monotonic envelope in compression
-        double sigmm;
-        double dumy;
-        this->Comp_Envlp(0, sigmm, dumy);
-        
-        // calculate current reloading slope Er (Eq. 2.35 in EERC Report)
-        // calculate the intersection of the current reloading slope Er
-        // with the zero stress axis (variable ept) (Eq. 2.36 in EERC Report)
-        double er = (sigmm - sigmr) / (0 - epsr);
-        double ept = - sigmm / er;
-        
-        if (eps <= ept) {
-            double sigmin = sigmm + er * eps;
-            double sigmax = er * 0.5 * (eps - ept);
-            sig = ec0 * deps;
-            e = ec0;
-            //opserr << "   epsr = " << epsr << ", sigmr = " << sigmr << ", sigmm = " << sigmm << ", er = " << er
-            //    << ", sigmin = " << sigmin << ", sigmax = " << sigmax << endln;
-            
-            if (sig <= sigmin) {
-                //opserr << "      inside sigmin with sig = " << sig << endln;
-                sig = sigmin;
-                e = er;
-            }
-            if (sig >= sigmax) {
-                //opserr << "      inside sigmax with sig = " << sig << endln;
-                sig = sigmax;
-                e = 0.5 * er;
-            }
-            
-        } else {
-            // else, if the current strain is between ept and epn
-            // (which corresponds to maximum remaining tensile strength)
-            // the response corresponds to the reloading branch in tension
-            // Since it is not saved, calculate the maximum remaining tensile
-            // strength sicn (Eq. 2.43 in EERC Report)
-            double epn = ept;
-            double sicn;
-            //opserr << "   else branch with epn = " << epn << " and ept = " << ept << endln;
-            
-            if (eps <= epn) {
-                //opserr << "      else branch plus eps <= epn" << endln;
-                this->Tens_Envlp(0, sicn, e);
-                //e = ec0;
-                //sig = sicn - e * (epn - eps);
-                //if (sig < 0) {
-                //    sig = 0;
-                //    e = 1.0e-10;
-                //}
-                
-                if (0 > ftc/E) {
-                    e = sicn;
-                } else {
-                    e = ec0;
-                }
-                sig = e * (eps - ept);
-                
-            } else {
-                //opserr << "      else branch plus else" << endln;
-                // else, if the current strain is larger than epn the response
-                // corresponds to the tensile envelope curve shifted by ept
-                double epstmp = eps - ept;
-                this->Tens_Envlp(epstmp, sig, e);
-            }
-        }
-    }
-    
-    //opserr << endln << "setTrial yields sig = " << sig << " and tangent = " << e << endln;
-    
-    return 0;
 }

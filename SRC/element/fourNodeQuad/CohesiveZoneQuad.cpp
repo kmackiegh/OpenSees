@@ -351,39 +351,39 @@ CohesiveZoneQuad::getTangentStiff()
 	// Loop over the integration points
 	for (int i = 0; i < 2; i++) {
 
-	  // Determine Jacobian for this integration point
-	  dvol = this->shapeFunction(pts[i][0], pts[i][1]);
-	  dvol *= (thickness*wts[i]);
-	  
-	  // Get the material tangent
-	  const Matrix &D = theMaterial[i]->getTangent();
-	  
-	  // Perform numerical integration
-	  //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
-	  //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
-	  
-	  double D00 = D(0,0); double D01 = D(0,1);
-	  double D10 = D(1,0); double D11 = D(1,1);
+        // Determine Jacobian for this integration point
+        dvol = this->shapeFunction(pts[i][0], pts[i][1]);
+        dvol *= (thickness*wts[i]);
 
-	  //	  for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8; 
-	  //   beta < 4; 
-	  //   beta++, ib += 2, colIb += 16, colIbP1 += 16) {
-	    
-	  for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-	    for (int beta = 0, ib = 0; beta < 4; beta++, ib += 2) {
+        // Get the material tangent
+        const Matrix &D = theMaterial[i]->getTangent();
+
+        // Perform numerical integration
+        //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
+        //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
+
+        double D00 = D(0,0); double D01 = D(0,1);
+        double D10 = D(1,0); double D11 = D(1,1);
+
+        //	  for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8;
+        //   beta < 4;
+        //   beta++, ib += 2, colIb += 16, colIbP1 += 16) {
+
+        for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
+            for (int beta = 0, ib = 0; beta < 4; beta++, ib += 2) {
 	      
-	      DB[0][0] = dvol * D00 * shp[2][beta];
-	      DB[1][0] = dvol * D10 * shp[2][beta];
-	      DB[0][1] = dvol * D01 * shp[2][beta];
-	      DB[1][1] = dvol * D11 * shp[2][beta];
-	      
-	      K(ia,ib) += shp[2][alpha]*DB[0][0];
-	      K(ia,ib+1) += shp[2][alpha]*DB[0][1];
-	      K(ia+1,ib) += shp[2][alpha]*DB[1][0];
-	      K(ia+1,ib+1) += shp[2][alpha]*DB[1][1];
-	      
-	    }
-	  }
+                DB[0][0] = dvol * D00 * shp[2][beta];
+                DB[1][0] = dvol * D10 * shp[2][beta];
+                DB[0][1] = dvol * D01 * shp[2][beta];
+                DB[1][1] = dvol * D11 * shp[2][beta];
+
+                K(ia,ib) += shp[2][alpha]*DB[0][0];
+                K(ia,ib+1) += shp[2][alpha]*DB[0][1];
+                K(ia+1,ib) += shp[2][alpha]*DB[1][0];
+                K(ia+1,ib+1) += shp[2][alpha]*DB[1][1];
+
+            }
+        }
 	}
 	
 	return K;
@@ -393,51 +393,51 @@ CohesiveZoneQuad::getTangentStiff()
 const Matrix&
 CohesiveZoneQuad::getInitialStiff()
 {
-  if (Ki != 0)
-    return *Ki;
+    if (Ki != 0)
+        return *Ki;
 
-  K.Zero();
-  
-  double dvol;
-  double DB[2][2];
-  
-  // Loop over the integration points
-  for (int i = 0; i < 2; i++) {
-    
-    // Determine Jacobian for this integration point
-    dvol = this->shapeFunction(pts[i][0], pts[i][1]);
-    dvol *= (thickness*wts[i]);
-    
-    // Get the material tangent
-    const Matrix &D = theMaterial[i]->getInitialTangent();
+    K.Zero();
 
-    double D00 = D(0,0); double D01 = D(0,1);
-    double D10 = D(1,0); double D11 = D(1,1);
-    
-    // Perform numerical integration
-    //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
-    //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
-    for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8; 
-	 beta < 4; 
-	 beta++, ib += 2, colIb += 16, colIbP1 += 16) {
-      
-      for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-	
-	DB[0][0] = dvol * D00 * shp[2][beta];
-	DB[1][0] = dvol * D10 * shp[2][beta];
-	DB[0][1] = dvol * D01 * shp[2][beta];
-	DB[1][1] = dvol * D11 * shp[2][beta];
-	
-	matrixData[colIb   +   ia] += shp[2][alpha]*DB[0][0];
-	matrixData[colIbP1 +   ia] += shp[2][alpha]*DB[0][1];
-	matrixData[colIb   + ia+1] += shp[2][alpha]*DB[1][0];
-	matrixData[colIbP1 + ia+1] += shp[2][alpha]*DB[1][1];
-      }
+    double dvol;
+    double DB[2][2];
+
+    // Loop over the integration points
+    for (int i = 0; i < 2; i++) {
+
+        // Determine Jacobian for this integration point
+        dvol = this->shapeFunction(pts[i][0], pts[i][1]);
+        dvol *= (thickness*wts[i]);
+
+        // Get the material tangent
+        const Matrix &D = theMaterial[i]->getInitialTangent();
+
+        double D00 = D(0,0); double D01 = D(0,1);
+        double D10 = D(1,0); double D11 = D(1,1);
+
+        // Perform numerical integration
+        //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
+        //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
+        for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8;
+            beta < 4;
+            beta++, ib += 2, colIb += 16, colIbP1 += 16) {
+
+            for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
+
+                DB[0][0] = dvol * D00 * shp[2][beta];
+                DB[1][0] = dvol * D10 * shp[2][beta];
+                DB[0][1] = dvol * D01 * shp[2][beta];
+                DB[1][1] = dvol * D11 * shp[2][beta];
+
+                matrixData[colIb   +   ia] += shp[2][alpha]*DB[0][0];
+                matrixData[colIbP1 +   ia] += shp[2][alpha]*DB[0][1];
+                matrixData[colIb   + ia+1] += shp[2][alpha]*DB[1][0];
+                matrixData[colIbP1 + ia+1] += shp[2][alpha]*DB[1][1];
+            }
+        }
     }
-  }
 
-  Ki = new Matrix(K);
-  return K;
+    Ki = new Matrix(K);
+    return K;
 }
 
 const Matrix&
@@ -464,8 +464,8 @@ CohesiveZoneQuad::addLoad(ElementalLoad *theLoad, double loadFactor)
 int 
 CohesiveZoneQuad::addInertiaLoadToUnbalance(const Vector &accel)
 {
-  // does nothing as element has no mass yet!
-  return 0;
+    // does nothing as element has no mass yet!
+    return 0;
 }
 
 const Vector&
@@ -489,8 +489,8 @@ CohesiveZoneQuad::getResistingForce()
 		//P = P + (B^ sigma) * intWt(i)*intWt(j) * detJ;
 		//P.addMatrixTransposeVector(1.0, B, sigma, intWt(i)*intWt(j)*detJ);
 		for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-			P(ia) += dvol*(shp[0][alpha]*sigma(0);
-			P(ia+1) += dvol*(shp[1][alpha]*sigma(1);
+			P(ia) += dvol*shp[0][alpha]*sigma(0);
+			P(ia+1) += dvol*shp[1][alpha]*sigma(1);
 		}
 	}
 	
@@ -509,7 +509,7 @@ CohesiveZoneQuad::getResistingForceIncInertia()
 
 	// add the damping forces if rayleigh damping
 	if (alphaM != 0.0 || betaK != 0.0 || betaK0 != 0.0 || betaKc != 0.0)
-	  P += this->getRayleighDampingForces();
+        P += this->getRayleighDampingForces();
 
 	return P;
 }
@@ -597,7 +597,7 @@ CohesiveZoneQuad::recvSelf(int commitTag, Channel &theChannel,
   this->setTag((int)data(0));
   thickness = data(1);
 
-  static ID idData();
+  static ID idData(8);
   // Quad now receives the tags of its four external nodes
   res += theChannel.recvID(dataTag, commitTag, idData);
   if (res < 0) {
@@ -672,7 +672,7 @@ CohesiveZoneQuad::Print(OPS_Stream &s, int flag)
     
     int i;
     const int numNodes = 4;
-    const int nstress = 3 ;
+    const int nstress = 1;
     
     for (i=0; i<numNodes; i++) {
       const Vector &nodeCrd = theNodes[i]->getCrds();
@@ -710,7 +710,7 @@ CohesiveZoneQuad::Print(OPS_Stream &s, int flag)
 	s << "\tConnected external nodes:  " << connectedExternalNodes;
 	s << "\tthickness:  " << thickness << endln;
 	theMaterial[0]->Print(s,flag);
-	s << "\tStress (xx yy xy)" << endln;
+	s << "\tStress (Tt Tn)" << endln;
 	for (int i = 0; i < 2; i++)
 		s << "\t\tIntegration point " << i+1 << ": " << theMaterial[i]->getStress();
   }
@@ -734,17 +734,16 @@ CohesiveZoneQuad::displaySelf(Renderer &theViewer, int displayMode, float fact, 
 
     // first set the quantity to be displayed at the nodes;
     // if displayMode is 1 through 3 we will plot material stresses otherwise 0.0
-
     static Vector values(2);
 
     for (int j=0; j<2; j++)
 	   values(j) = 0.0;
 
     if (displayMode < 4 && displayMode > 0) {
-	for (int i=0; i<2; i++) {
-	  const Vector &stress = theMaterial[i]->getStress();
-	  values(i) = stress(displayMode-1);
-	}
+        for (int i=0; i<2; i++) {
+            const Vector &stress = theMaterial[i]->getStress();
+            values(i) = stress(displayMode-1);
+        }
     }
 
     // now  determine the end points of the quad based on
@@ -757,42 +756,43 @@ CohesiveZoneQuad::displaySelf(Renderer &theViewer, int displayMode, float fact, 
 
     static Matrix coords(4,3);
 
-    if (displayMode >= 0) {    
-      
-      const Vector &end1Disp = theNodes[0]->getDisp();
-      const Vector &end2Disp = theNodes[1]->getDisp();
-      const Vector &end3Disp = theNodes[2]->getDisp();
-      const Vector &end4Disp = theNodes[3]->getDisp();
+    if (displayMode >= 0) {
+        const Vector &end1Disp = theNodes[0]->getDisp();
+        const Vector &end2Disp = theNodes[1]->getDisp();
+        const Vector &end3Disp = theNodes[2]->getDisp();
+        const Vector &end4Disp = theNodes[3]->getDisp();
 
-      for (int i = 0; i < 2; i++) {
-	coords(0,i) = end1Crd(i) + end1Disp(i)*fact;
-	coords(1,i) = end2Crd(i) + end2Disp(i)*fact;    
-	coords(2,i) = end3Crd(i) + end3Disp(i)*fact;    
-	coords(3,i) = end4Crd(i) + end4Disp(i)*fact;    
-      }
+        for (int i = 0; i < 2; i++) {
+            coords(0,i) = end1Crd(i) + end1Disp(i)*fact;
+            coords(1,i) = end2Crd(i) + end2Disp(i)*fact;
+            coords(2,i) = end3Crd(i) + end3Disp(i)*fact;
+            coords(3,i) = end4Crd(i) + end4Disp(i)*fact;
+        }
+        
     } else {
-      int mode = displayMode * -1;
-      const Matrix &eigen1 = theNodes[0]->getEigenvectors();
-      const Matrix &eigen2 = theNodes[1]->getEigenvectors();
-      const Matrix &eigen3 = theNodes[2]->getEigenvectors();
-      const Matrix &eigen4 = theNodes[3]->getEigenvectors();
-      if (eigen1.noCols() >= mode) {
-	for (int i = 0; i < 2; i++) {
-	  coords(0,i) = end1Crd(i) + eigen1(i,mode-1)*fact;
-	  coords(1,i) = end2Crd(i) + eigen2(i,mode-1)*fact;
-	  coords(2,i) = end3Crd(i) + eigen3(i,mode-1)*fact;
-	  coords(3,i) = end4Crd(i) + eigen4(i,mode-1)*fact;
-	}    
-      } else {
-	for (int i = 0; i < 2; i++) {
-	  coords(0,i) = end1Crd(i);
-	  coords(1,i) = end2Crd(i);
-	  coords(2,i) = end3Crd(i);
-	  coords(3,i) = end4Crd(i);
-	}    
-      }
+        int mode = displayMode * -1;
+        const Matrix &eigen1 = theNodes[0]->getEigenvectors();
+        const Matrix &eigen2 = theNodes[1]->getEigenvectors();
+        const Matrix &eigen3 = theNodes[2]->getEigenvectors();
+        const Matrix &eigen4 = theNodes[3]->getEigenvectors();
+        
+        if (eigen1.noCols() >= mode) {
+            for (int i = 0; i < 2; i++) {
+                coords(0,i) = end1Crd(i) + eigen1(i,mode-1)*fact;
+                coords(1,i) = end2Crd(i) + eigen2(i,mode-1)*fact;
+                coords(2,i) = end3Crd(i) + eigen3(i,mode-1)*fact;
+                coords(3,i) = end4Crd(i) + eigen4(i,mode-1)*fact;
+            }
+        } else {
+            for (int i = 0; i < 2; i++) {
+                coords(0,i) = end1Crd(i);
+                coords(1,i) = end2Crd(i);
+                coords(2,i) = end3Crd(i);
+                coords(3,i) = end4Crd(i);
+            }
+        }
     }
-    
+
     int error = 0;
 
     // finally we  the element using drawPolygon
@@ -855,14 +855,13 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
       output.attr("classType", theMaterial[i]->getClassTag());
       output.attr("tag", theMaterial[i]->getTag());
       
-      output.tag("ResponseType","sigma11");
-      output.tag("ResponseType","sigma22");
-      output.tag("ResponseType","sigma12");
+      output.tag("ResponseType","Tt");
+      output.tag("ResponseType","Tn");
       
       output.endTag(); // GaussPoint
       output.endTag(); // NdMaterialOutput
       }
-    theResponse =  new ElementResponse(this, 3, Vector(12));
+    theResponse =  new ElementResponse(this, 3, Vector(4));
   }
 
   else if ((strcmp(argv[0],"strain") ==0) || (strcmp(argv[0],"strains") ==0)) {
@@ -876,14 +875,13 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
       output.attr("classType", theMaterial[i]->getClassTag());
       output.attr("tag", theMaterial[i]->getTag());
       
-      output.tag("ResponseType","eta11");
-      output.tag("ResponseType","eta22");
-      output.tag("ResponseType","eta12");
+      output.tag("ResponseType","Dt");
+      output.tag("ResponseType","Dn");
       
       output.endTag(); // GaussPoint
       output.endTag(); // NdMaterialOutput
       }
-    theResponse =  new ElementResponse(this, 4, Vector(12));
+    theResponse =  new ElementResponse(this, 4, Vector(4));
   }
 
   output.endTag(); // ElementOutput
@@ -901,7 +899,7 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
   } else if (responseID == 3) {
 
     // Loop over the integration points
-    static Vector stresses(12);
+    static Vector stresses(4);
     int cnt = 0;
     for (int i = 0; i < 2; i++) {
 
@@ -909,8 +907,7 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
       const Vector &sigma = theMaterial[i]->getStress();
       stresses(cnt) = sigma(0);
       stresses(cnt+1) = sigma(1);
-      stresses(cnt+2) = sigma(2);
-      cnt += 3;
+      cnt += 2;
     }
     
     return eleInfo.setVector(stresses);
@@ -918,7 +915,7 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
   } else if (responseID == 4) {
 
     // Loop over the integration points
-    static Vector stresses(12);
+    static Vector stresses(4);
     int cnt = 0;
     for (int i = 0; i < 2; i++) {
 
@@ -926,8 +923,7 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
       const Vector &sigma = theMaterial[i]->getStrain();
       stresses(cnt) = sigma(0);
       stresses(cnt+1) = sigma(1);
-      stresses(cnt+2) = sigma(2);
-      cnt += 3;
+      cnt += 2;
     }
 
     return eleInfo.setVector(stresses);
@@ -940,70 +936,58 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
 int
 CohesiveZoneQuad::setParameter(const char **argv, int argc, Parameter &param)
 {
-  if (argc < 1)
-    return -1;
+    if (argc < 1)
+        return -1;
 
-  int res = -1;
+    int res = -1;
 
-  // quad pressure loading
-  if ((strstr(argv[0],"material") != 0) && (strcmp(argv[0],"materialState") != 0)) {
+    // quad pressure loading
+    if ((strstr(argv[0],"material") != 0) && (strcmp(argv[0],"materialState") != 0)) {
+        if (argc < 3)
+            return -1;
 
-    if (argc < 3)
-      return -1;
-
-    int pointNum = atoi(argv[1]);
-    if (pointNum > 0 && pointNum <= 2)
-      return theMaterial[pointNum-1]->setParameter(&argv[2], argc-2, param);
-    else 
-      return -1;
-  }
-
-  // otherwise it could be just a forall material parameter
-  else {
-
-    int matRes = res;
-    for (int i=0; i<2; i++) {
-      matRes =  theMaterial[i]->setParameter(argv, argc, param);
-
-      if (matRes != -1)
-	res = matRes;
+        int pointNum = atoi(argv[1]);
+        if (pointNum > 0 && pointNum <= 2)
+            return theMaterial[pointNum-1]->setParameter(&argv[2], argc-2, param);
+        else
+            return -1;
     }
-  }
-  
-  return res;
+
+    // otherwise it could be just a forall material parameter
+    else {
+        int matRes = res;
+        for (int i=0; i<2; i++) {
+            matRes =  theMaterial[i]->setParameter(argv, argc, param);
+
+            if (matRes != -1)
+                res = matRes;
+        }
+    }
+
+    return res;
 }
     
 int
 CohesiveZoneQuad::updateParameter(int parameterID, Information &info)
 {
-	int res = -1;
-		int matRes = res;
-  switch (parameterID) {
-    case -1:
-      return -1;
+    int res = -1;
+    int matRes = res;
+    switch (parameterID) {
+        case -1:
+            return -1;
 
-	case 1:
-		
-		for (int i = 0; i<2; i++) {
-		matRes = theMaterial[i]->updateParameter(parameterID, info);
-		}
-		if (matRes != -1) {
-			res = matRes;
-		}
-		return res;
+        case 1:
+            for (int i = 0; i<2; i++) {
+                matRes = theMaterial[i]->updateParameter(parameterID, info);
+            }
+            if (matRes != -1) {
+                res = matRes;
+            }
+            return res;
 
-	default: 
-	  /*	  
-	  if (parameterID >= 100) { // material parameter
-	    int pointNum = parameterID/100;
-	    if (pointNum > 0 && pointNum <= 2)
-	      return theMaterial[pointNum-1]->updateParameter(parameterID-100*pointNum, info);
-	    else
-	      return -1;
-	  } else // unknown
-	  */
-	    return -1;
-  }
+        default:
+            return -1;
+    }
 }
 
 double CohesiveZoneQuad::shapeFunction(double xi, double eta)

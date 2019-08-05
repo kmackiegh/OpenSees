@@ -37,17 +37,11 @@ class ExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ExponentialTS (int tag, int classTag,
-                        double E, double Eh, double Es,
-                        double nu, double fc, double ftc, double ftm,
-                        double shr, double fres, double fcu, double epscu, double rat,
-                        double rho, double tlim);
+                   double d1, double d2, double s1, double s2);
 
     // Called by clients
     ExponentialTS (int tag,
-                        double E, double Eh, double Es,
-                        double nu, double fc, double ftc, double ftm,
-                        double shr, double fres, double fcu, double epscu, double rat,
-                        double rho, double tlim);
+                   double d1, double d2, double s1, double s2);
 
     // For parallel processing
     ExponentialTS (void);
@@ -93,28 +87,16 @@ class ExponentialTS : public NDMaterial
 		 FEM_ObjectBroker &theBroker);    
     
     void Print(OPS_Stream &s, int flag = 0);
-    void Tens_Envlp(double epsc, double &sigc, double &Ect);
-    void Comp_Envlp(double epsc, double &sigc, double &Ect);
+    void Shear_Envlp (double Delt, double Deln, double &Tt, double &ETt, double &ETn);
+    void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
     
   protected:
-    double E;
-    double Eh;
-    double Es;
-    double nu;
-    double fc;
-    double ftc;
-    double ftm;
-    double shr;
-    double fres;
-    
-    // properties from Concrete02
-    double fcu;   // stress at ultimate (crushing) strain
-    double epscu; // ultimate (crushing) strain
-    double rat;   // ratio between unloading slope at epscu and original slope
-    
-    // optional arguments
-    double rho; //mass per unit 3D volume
-    double tlim; //limits cracking angle to be within small range of this angle (in degrees between -90 and 90)
+    double delt;
+    double deln;
+    double tau_max;
+    double sig_max;
+    double phit;
+    double phin;
     
   private:
 

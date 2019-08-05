@@ -22,9 +22,8 @@
 // $Date: 2009-08-07 20:01:54 $
 // $Source: /usr/local/cvs/OpenSees/SRC/element/CohesiveZoneQuad/CohesiveZoneQuad.h,v $
                                                                         
-// Written: MHS
-// Created: Feb 2000
-// Revised: Dec 2000 for efficiency
+// Written: KRM
+// Created: Aug 2019
 //
 // Description: This file contains the class definition for CohesiveZoneQuad.
 

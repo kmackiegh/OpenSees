@@ -41,10 +41,7 @@
 class ExponentialTS2D : public ExponentialTS
 {
   public:
-    ExponentialTS2D(int tag, double E, double Eh, double Es,
-                          double nu, double fc, double ftc, double ftm,
-                          double shr, double fres, double fcu, double epscu, double rat,
-                          double rho, double tlim);
+    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2);
     ExponentialTS2D();
     ~ExponentialTS2D();
 
@@ -78,10 +75,6 @@ class ExponentialTS2D : public ExponentialTS
 
   private:
     int initialize(void);
-    int rotate_principal(void);
-    int update_principal(void);
-    int update_tangent(void);
-    int setUniaxialStrain(int indx, double &sig, double &e);
     
     static Vector stress;	// Stress vector ... class-wide for returns
     static Matrix tangent;	// Elastic constants ... class-wide for returns
@@ -95,24 +88,14 @@ class ExponentialTS2D : public ExponentialTS
     // committed storage
     Vector Cepsilon;	    // Committed strain
     Vector Cstress;         // Committed stress
-    Vector Ctangent;        // Committed principal tangent stiffness
     
-    double E1;
-    double E2;
-    double G;
-    double G12;
-    double nu12;
-    double nu21;
-    double rnu;
-    double rG;
-    
-    double sig1;
-    double sig2;
-    double tau;
-    
-    double th;
-    double th_cr;
-    int cracker;
+    // some local storage for passing into envelopes
+    double sigt;
+    double sign;
+    double ETt;
+    double ETn;
+    double ENt;
+    double ENn;
     
 };
 
