@@ -468,6 +468,14 @@ TclModelBuilderElementCommand(ClientData clientData, Tcl_Interp *interp,
       return TCL_ERROR;
     }
 
+  } else if (strcmp(argv[1],"InerterElement") == 0) {
+    Element *theEle = (Element*) OPS_InerterElement();
+    if (theEle != 0)
+        theElement = theEle;
+    else {
+        opserr << "TclElementCommand -- unable to create element of type : " << argv[1] << endln;
+        return TCL_ERROR;
+    }
 
   } else if (strcmp(argv[1],"componentElement2d") == 0) {
     void *theEle = OPS_ComponentElement2d();
