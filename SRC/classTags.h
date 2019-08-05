@@ -367,6 +367,8 @@
 #define ND_TAG_CThreeDimensional   55
 #define ND_TAG_LowTension 65
 #define ND_TAG_LowTensionPlaneStress 66
+#define ND_TAG_ExponentialTS 67
+#define ND_TAG_ExponentialTS2D 68
 
 
 #define ND_TAG_FluidSolidPorousMaterial        100
@@ -725,6 +727,7 @@
 #define ELE_TAG_PFEMElement2DQuasi        187
 #define ELE_TAG_MINI                      188
 #define ELE_TAG_PFEMElement3DBubble       189
+#define ELE_TAG_CohesiveZoneQuad          190
 
 #define FRN_TAG_Coulomb            1
 #define FRN_TAG_VelDependent       2

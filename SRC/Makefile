@@ -532,6 +532,7 @@ ELE_LIBS   =  $(FE)/element/Element.o \
 	$(FE)/element/fourNodeQuad/ConstantPressureVolumeQuad.o \
 	$(FE)/element/fourNodeQuad/EnhancedQuad.o \
 	$(FE)/element/fourNodeQuad/NineNodeMixedQuad.o \
+	$(FE)/element/fourNodeQuad/CohesiveZoneQuad.o \
 	$(FE)/element/shell/ShellMITC4.o \
 	$(FE)/element/shell/ShellMITC4Thermal.o \
 	$(FE)/element/shell/ShellMITC9.o \
@@ -844,6 +845,8 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
 	$(FE)/material/nD/ElasticOrthotropicThreeDimensional.o \
     $(FE)/material/nD/LowTensionMaterial.o \
     $(FE)/material/nD/LowTensionPlaneStress.o \
+    $(FE)/material/nD/tractionSlip/ExponentialTS.o \
+    $(FE)/material/nD/tractionSlip/ExponentialTS2D.o \
 	$(FE)/material/nD/PlaneStressMaterial.o \
 	$(FE)/material/nD/PlaneStrainMaterial.o \
 	$(FE)/material/nD/PlateFiberMaterial.o \

@@ -96,6 +96,7 @@ extern  void *  OPS_NewPlasticDamageConcretePlaneStress(void);
 extern  void *OPS_ElasticIsotropicMaterial(void);
 extern  void *OPS_ElasticOrthotropicMaterial(void);
 extern  void *OPS_NewLowTensionMaterial(void);
+extern  void *OPS_NewExponentialTS(void);
 extern  void *OPS_DruckerPragerMaterial(void);
 extern  void *OPS_BoundingCamClayMaterial(void);
 extern  void *OPS_ContactMaterial2DMaterial(void);
@@ -537,6 +538,15 @@ TclModelBuilderNDMaterialCommand (ClientData clientData, Tcl_Interp *interp, int
     else if (strcmp(argv[1],"LowTension") == 0) {
         
         void *theMat = OPS_NewLowTensionMaterial();
+        if (theMat != 0)
+            theMaterial = (NDMaterial *)theMat;
+        else
+            return TCL_ERROR;
+    }
+    
+    else if (strcmp(argv[1],"ExponentialTS") == 0) {
+        
+        void *theMat = OPS_NewExponentialTS();
         if (theMat != 0)
             theMaterial = (NDMaterial *)theMat;
         else

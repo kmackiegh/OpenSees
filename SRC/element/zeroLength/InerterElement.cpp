@@ -140,7 +140,7 @@ InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
 {
     // check type
     inerterType = iType;
-    if (inerterType != 1 || inerterType != 2) {
+    if (inerterType != 1 && inerterType != 2) {
         opserr << "InerterElement::InerterElement invalid inerterType input = " << inerterType << endln;
         exit(-1);
     }
@@ -179,7 +179,11 @@ InerterElement::~InerterElement()
 {
     // invoke the destructor on any objects created by the object
     // that the object still holds a pointer to
-
+    if (t1d != 0)
+        delete t1d;
+    if (Tstress != 0)
+        delete Tstress;
+    
 }
 
 
@@ -327,7 +331,8 @@ InerterElement::revertToLastCommit()
 
 int
 InerterElement::revertToStart()
-{   
+{
+    Tstress->Zero();
     int code=0;
     return code;
 }
@@ -349,6 +354,9 @@ InerterElement::update(void)
     const Vector& acc2  = theNodes[1]->getTrialAccel();
     Vector diffA = acc2-acc1;
     
+    // zero trial stress
+    Tstress->Zero();
+    
     // loop over dofs
     for (int mat=0; mat<numDOF/2; mat++) {
         // compute strain and rate; set as current trial for material
@@ -357,16 +365,14 @@ InerterElement::update(void)
         cura = this->computeCurrentStrain1d(mat,diffA);
         
         // set trial curd, curv, cura on element
-        Tstress = 0;
-        
         if (mat == 0) {
             if (inerterType == 1) {
                 if (fabs(curv) > 1.0e-9)
-                    Tstress = C*cura;
+                    (*Tstress)(mat) = C*cura;
                 
             } else if (inerterType == 2) {
                 if (cura/curv > 0)
-                    Tstress = C*cura;
+                    (*Tstress)(mat) = C*cura;
                 
             }
         }
@@ -394,14 +400,14 @@ InerterElement::getTangentStiff(void)
 
         // compute contribution of material to tangent matrix
         for (int i=0; i<numDOF; i++)
-            for(int j=0; j<i+1; j++)
+            for (int j=0; j<i+1; j++)
                 stiff(i,j) +=  tran(mat,i) * E * tran(mat,j);
 
     }
     
     // complete symmetric stiffness matrix
     for (int i=0; i<numDOF; i++)
-        for(int j=0; j<i; j++)
+        for (int j=0; j<i; j++)
             stiff(j,i) = stiff(i,j);
 
     return stiff;
@@ -427,14 +433,14 @@ InerterElement::getInitialStiff(void)
 
         // compute contribution of material to tangent matrix
         for (int i=0; i<numDOF; i++)
-            for(int j=0; j<i+1; j++)
+            for (int j=0; j<i+1; j++)
                 stiff(i,j) +=  tran(mat,i) * E * tran(mat,j);
         
     }
 
     // complete symmetric stiffness matrix
     for (int i=0; i<numDOF; i++)
-        for(int j=0; j<i; j++)
+        for (int j=0; j<i; j++)
             stiff(j,i) = stiff(i,j);
 
     return stiff;
@@ -444,6 +450,8 @@ InerterElement::getInitialStiff(void)
 const Matrix &
 InerterElement::getDamp(void)
 {
+    double eta = 0;
+    
     // damp is a reference to the matrix holding the damping matrix
     Matrix& damp = *theMatrix;
 
@@ -456,19 +464,23 @@ InerterElement::getDamp(void)
 
     } else {
         // loop over dofs and add their damping tangents
-        double eta = 0;
         Matrix& tran = *t1d;
         for (int mat=0; mat<numDOF/2; mat++) {
             // get tangent for material
             //eta = theMaterial1d[mat]->getDampTangent();
             
-            // reza had this depend on acc/vel > 0 for type 2
-            if (mat == 0)
-                eta = C/ops_Dt;
+            // default to zero, Reza has some of these as C/dt, but not sure this is correct
+            eta = 0;
+            if (mat == 0) {
+                if (inerterType == 1)
+                    eta = C/ops_Dt;
+                else if (inerterType == 2 && fabs( (*Tstress)(mat) ) > 1.0e-9 )
+                    eta = C/ops_Dt;
+            }
 
             // compute contribution of material to tangent matrix
             for (int i=0; i<numDOF; i++)
-                for(int j=0; j<i+1; j++)
+                for (int j=0; j<i+1; j++)
                     damp(i,j) +=  tran(mat,i) * eta * tran(mat,j);
 
         }
@@ -476,7 +488,7 @@ InerterElement::getDamp(void)
 
     // complete symmetric damping matrix
     for (int i=0; i<numDOF; i++)
-        for(int j=0; j<i; j++)
+        for (int j=0; j<i; j++)
             damp(j,i) = damp(i,j);
 
     return damp;
@@ -527,7 +539,7 @@ InerterElement::getResistingForce()
     for (int mat=0; mat<numDOF/2; mat++) {
         // get resisting force for material
         //force = theMaterial1d[mat]->getStress();
-        force = Tstress;
+        force = (*Tstress)(mat);
 
         // compute residual due to resisting force
         for (int i=0; i<numDOF; i++)
@@ -603,39 +615,37 @@ InerterElement::sendSelf(int commitTag, Channel &theChannel)
 int
 InerterElement::recvSelf(int commitTag, Channel &theChannel, FEM_ObjectBroker &theBroker)
 {
-  int res = 0;
-  
-  int dataTag = this->getDbTag();
+    int res = 0;
 
-  // InerterElement creates an ID, receives the ID and then sets the
-  // internal data with the data in the ID
+    int dataTag = this->getDbTag();
 
-  static ID idData(8);
+    // InerterElement creates an ID, receives the ID and then sets the
+    // internal data with the data in the ID
 
-  res += theChannel.recvID(dataTag, commitTag, idData);
-  if (res < 0) {
-    opserr << "InerterElement::recvSelf -- failed to receive ID data\n";
-			    
-    return res;
-  }
+    static ID idData(8);
 
-  res += theChannel.recvMatrix(dataTag, commitTag, transformation);
-  if (res < 0) {
-    opserr << "InerterElement::recvSelf -- failed to receive transformation Matrix\n";
-			    
-    return res;
-  }
+    res += theChannel.recvID(dataTag, commitTag, idData);
+    if (res < 0) {
+        opserr << "InerterElement::recvSelf -- failed to receive ID data\n";
+        return res;
+    }
 
-  this->setTag(idData(0));
-  dimension = idData(1);
-  numDOF = idData(2);
-  connectedExternalNodes(0) = idData(3);
-  connectedExternalNodes(1) = idData(4);
+    res += theChannel.recvMatrix(dataTag, commitTag, transformation);
+    if (res < 0) {
+        opserr << "InerterElement::recvSelf -- failed to receive transformation Matrix\n";
+        return res;
+    }
+
+    this->setTag(idData(0));
+    dimension = idData(1);
+    numDOF = idData(2);
+    connectedExternalNodes(0) = idData(3);
+    connectedExternalNodes(1) = idData(4);
     inerterType = idData(5);
     C = idData(6);
-  useRayleighDamping = idData(7);
-  
-  return res;
+    useRayleighDamping = idData(7);
+
+    return res;
 }
 
 
@@ -655,7 +665,7 @@ InerterElement::displaySelf(Renderer &theViewer, int displayMode, float fact, co
 
         theNodes[0]->getDisplayCrds(v1, fact);
         theNodes[1]->getDisplayCrds(v2, fact);
-        d1 = Tstress;
+        d1 = (*Tstress)(0);
         
     } else {
         theNodes[0]->getDisplayCrds(v1, 0.);
@@ -907,11 +917,17 @@ InerterElement::setTran1d(Etype elemType)
     int   indx, dir;
     Dtype dirType;
     
-    // Create 1d transformation matrix
+    // Create 1d transformation matrix and storage
     t1d = new Matrix(numDOF/2,numDOF);
+    Tstress = new Vector(numDOF/2);
     
     if (t1d == 0)
-	opserr << "FATAL InerterElement::setTran1d - can't allocate 1d transformation matrix\n";
+        opserr << "FATAL InerterElement::setTran1d - can't allocate 1d transformation matrix\n";
+    if (Tstress == 0)
+        opserr << "FATAL InerterElement::setTran1d - can't allocated Tstress vector\n";
+    
+    // zero trial vectors
+    Tstress->Zero();
     
     // Use reference for convenience and zero matrix.
     Matrix& tran = *t1d;

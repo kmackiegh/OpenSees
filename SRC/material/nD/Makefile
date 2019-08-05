@@ -100,6 +100,7 @@ all: $(OBJS)
 	@$(CD) $(FE)/material/nD/UWmaterials; $(MAKE);
 	@$(CD) $(FE)/material/nD/matCMM; $(MAKE);
 	@$(CD) $(FE)/material/nD/stressDensityModel; $(MAKE);
+	@$(CD) $(FE)/material/nD/tractionSlip; $(MAKE);
 
 # Miscellaneous
 
@@ -119,6 +120,7 @@ spotless: clean
 	@$(CD) $(FE)/material/nD/UWmaterials; $(MAKE) wipe;
 	@$(CD) $(FE)/material/nD/matCMM; $(MAKE) wipe;
 	@$(CD) $(FE)/material/nD/stressDensityModel; $(MAKE) wipe;
+	@$(CD) $(FE)/material/nD/tractionSlip; $(MAKE) wipe;
 
 wipe: spotless
 

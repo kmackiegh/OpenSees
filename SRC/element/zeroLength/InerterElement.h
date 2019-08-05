@@ -118,7 +118,6 @@ class InerterElement : public Element
     Etype elemType;
     int inerterType;
     double C;
-    double Tstress;
 
     // private methods
     void   setUp ( int Nd1, int Nd2, const Vector& x, const Vector& y);
@@ -126,9 +125,9 @@ class InerterElement : public Element
     double computeCurrentStrain1d ( int mat, const Vector& diff ) const;    
 
     // private attributes - a copy for each object of the class
-    ID  connectedExternalNodes;         // contains the tags of the end nodes
-    int dimension;                      // = 1, 2, or 3 dimensions
-    int numDOF;	                        // number of dof for InerterElement
+    ID  connectedExternalNodes; // contains the tags of the end nodes
+    int dimension;              // = 2 or 3 dimensions
+    int numDOF;	                // number of dof for InerterElement
     Matrix transformation;		// transformation matrix for orientation
     int useRayleighDamping;
 	
@@ -138,7 +137,8 @@ class InerterElement : public Element
     Vector *theVector;      	// pointer to objects vector (a class Vector)
 
     // Storage for uniaxial material models
-    Matrix           *t1d; 	   // hold the transformation matrix
+    Matrix *t1d; 	            // hold the transformation matrix
+    Vector *Tstress;            // hold trial stress
 
     // static data - single copy for all objects of the class	
     static Matrix InerterElementM6;   // class wide matrix for 6*6
