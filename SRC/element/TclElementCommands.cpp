@@ -834,16 +834,6 @@ TclModelBuilderElementCommand(ClientData clientData, Tcl_Interp *interp,
       opserr << "TclElementCommand -- unable to create element of type : " << argv[1] << endln;
       return TCL_ERROR;
     }
-      
-  } else if (strcmp(argv[1],"InerterElement") == 0) {
-      
-      void *theEle = OPS_InerterElement();
-      if (theEle != 0)
-          theElement = (Element *)theEle;
-      else {
-          opserr << "TclElementCommand -- unable to create element of type : " << argv[1] << endln;
-          return TCL_ERROR;
-      }
 
   } else if ((strcmp(argv[1],"BeamContact2d") == 0) || (strcmp(argv[1],"BeamContact2D") == 0)) {
     
