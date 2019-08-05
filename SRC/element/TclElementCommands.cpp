@@ -220,11 +220,6 @@ extern int
 TclModelBuilder_addZeroLengthRocking(ClientData, Tcl_Interp *, int, TCL_Char **,
                                        Domain*, TclModelBuilder *);
 
-// KRM added for inerter element
-extern int
-TclModelBuilder_addInerterElement(ClientData, Tcl_Interp *, int, TCL_Char **,
-                                     Domain*, TclModelBuilder *);
-
 // MHS
 extern int
 TclModelBuilder_addZeroLengthSection(ClientData, Tcl_Interp *, int, TCL_Char **,
@@ -475,6 +470,14 @@ TclModelBuilderElementCommand(ClientData clientData, Tcl_Interp *interp,
       return TCL_ERROR;
     }
 
+  } else if (strcmp(argv[1],"InerterElement") == 0) {
+    Element *theEle = (Element*) OPS_InerterElement();
+    if (theEle != 0)
+        theElement = theEle;
+    else {
+        opserr << "TclElementCommand -- unable to create element of type : " << argv[1] << endln;
+        return TCL_ERROR;
+    }
 
   } else if (strcmp(argv[1],"componentElement2d") == 0) {
     void *theEle = OPS_ComponentElement2d();

@@ -140,8 +140,8 @@ InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
 {
     // check type
     inerterType = iType;
-    if (inerterType != 1 || inerterType != 2) {
-        opserr << "InerterElement::InerterElement invalid inerterType input = " << inerterType << endln;
+    if (inerterType != 1 && inerterType != 2) {
+        opserr << "InerterElement::InerterElement invalid inerterType was input: " << inerterType << endln;
         exit(-1);
     }
     
