@@ -50,13 +50,13 @@ void* OPS_CohesiveZoneQuad()
     int ndf = OPS_GetNDF();
 
     if (ndm != 2 || ndf != 2) {
-        opserr << "WARNING -- model dimensions and/or nodal DOF not compatible with quad element\n";
+        opserr << "WARNING -- model dimensions and/or nodal DOF not compatible with CohesiveZoneQuad element\n";
         return 0;
     }
     
-    if (OPS_GetNumRemainingInputArgs() < 8) {
+    if (OPS_GetNumRemainingInputArgs() < 7) {
         opserr << "WARNING insufficient arguments\n";
-        opserr << "Want: element CohesiveZoneQuad eleTag? iNode? jNode? kNode? lNode? thk? type? matTag?\n";
+        opserr << "Want: element CohesiveZoneQuad eleTag? iNode? jNode? kNode? lNode? thk? matTag? <-vecn n1? n2? n3?>\n";
         return 0;
     }
 
@@ -75,8 +75,7 @@ void* OPS_CohesiveZoneQuad()
         return 0;
     }
 
-    const char* type = OPS_GetString();
-
+    // import material tag and check pointer
     int matTag;
     num = 1;
     if (OPS_GetIntInput(&num,&matTag) < 0) {
@@ -91,9 +90,30 @@ void* OPS_CohesiveZoneQuad()
         opserr << "\nCohesiveZoneQuad element: " << idata[0] << endln;
         return 0;
     }
+    
+    // optional outward normal vector
+    Vector vecn(3);
+    vecn(0) = 0; vecn(1) = 1; vecn(2) = 0;
+    const char* type;
+    
+    while (OPS_GetNumRemainingInputArgs() > 0) {
+        type = OPS_GetString();
+        if (strcmp(type, "-vecn") == 0) {
+            if (OPS_GetNumRemainingInputArgs() < 3) {
+                opserr << "WARNING: insufficient arguments after -vecn\n";
+                return 0;
+            }
+            num = 3;
+            if (OPS_GetDoubleInput( &num,&vecn(0) ) < 0) {
+                opserr << "WARNING invalid -vecn value for ele  " << idata[0] << endln;
+                return 0;
+            }
+        }
+    }
 
+    // create element
     return new CohesiveZoneQuad(idata[0],idata[1],idata[2],idata[3],idata[4],
-			                *mat,type,thk);
+			                *mat,thk,vecn);
 }
 
 
@@ -105,10 +125,10 @@ double CohesiveZoneQuad::pts[2][2];
 double CohesiveZoneQuad::wts[2];
 
 CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
-			   NDMaterial &m, const char *type, double t)
+			   NDMaterial &m, double t, const Vector _vec)
 :Element (tag, ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(t), Ki(0)
+ Q(8), thickness(t), vecn(_vec), Ki(0)
 {
 	pts[0][0] = -0.5773502691896258;
 	pts[0][1] =  0;
@@ -117,13 +137,6 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 
 	wts[0] = 1.0;
 	wts[1] = 1.0;
-
-    // NYI maybe need a way to specify what is the normal and tangential directions later
-	if ( strcmp(type,"Exponential") != 0 && strcmp(type,"Bilinear") != 0
-	    && strcmp(type,"LinearBrittle") ) {
-        opserr << "CohesiveZoneQuad::CohesiveZoneQuad -- improper material type: " << type << "for CohesiveZoneQuad\n";
-        exit(-1);
-	}
 
     // Allocate arrays of pointers to NDMaterials
     theMaterial = new NDMaterial *[2];
@@ -136,7 +149,7 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 	int i;
     for (i = 0; i < 2; i++) {
       // Get copies of the material model for each integration point
-      theMaterial[i] = m.getCopy(type);
+      theMaterial[i] = m.getCopy("2D");
 			
       // Check allocation
       if (theMaterial[i] == 0) {
@@ -158,7 +171,7 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 CohesiveZoneQuad::CohesiveZoneQuad()
 :Element (0,ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(0.0), Ki(0)
+ Q(8), thickness(0.0), vecn(0), Ki(0)
 {
   pts[0][0] = -0.577350269189626;
   pts[0][1] =  0;
@@ -489,8 +502,8 @@ CohesiveZoneQuad::getResistingForce()
 		//P = P + (B^ sigma) * intWt(i)*intWt(j) * detJ;
 		//P.addMatrixTransposeVector(1.0, B, sigma, intWt(i)*intWt(j)*detJ);
 		for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-			P(ia) += dvol*shp[0][alpha]*sigma(0);
-			P(ia+1) += dvol*shp[1][alpha]*sigma(1);
+			P(ia) += dvol*shp[2][alpha]*sigma(0);
+			P(ia+1) += dvol*shp[2][alpha]*sigma(1);
 		}
 	}
 	

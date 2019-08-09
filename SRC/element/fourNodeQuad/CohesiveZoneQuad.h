@@ -47,7 +47,7 @@ class CohesiveZoneQuad : public Element
 {
   public:
     CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
-		 NDMaterial &m, const char *type, double t);
+		 NDMaterial &m, double t, const Vector vin = 0);
     CohesiveZoneQuad();
     ~CohesiveZoneQuad();
 
@@ -107,6 +107,7 @@ class CohesiveZoneQuad : public Element
     Vector Q;		        // Applied nodal loads
 
     double thickness;	        // Element thickness
+    Vector vecn;                // outward normal vector
     static double shp[3][4];	// Stores shape functions and derivatives (overwritten)
     static double pts[2][2];	// Stores quadrature points
     static double wts[2];		// Stores quadrature weights
