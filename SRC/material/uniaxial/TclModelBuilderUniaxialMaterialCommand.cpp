@@ -38,6 +38,7 @@
 
 #include <Elastic2Material.h>	// ZHY
 #include <HardeningMaterial.h>	// MHS
+#include <HardeningMaterial2.h>	// MHS
 #include <Steel03.h>			// KM
 #include <Concrete01WithSITC.h>		// Won Lee
 #include <ECC01.h>                      // Won Lee
@@ -87,10 +88,12 @@ extern void *OPS_Steel01(void);
 extern void *OPS_FRPConfinedConcrete02(void);
 //extern void *OPS_HoehlerStanton(void);
 extern void *OPS_Steel02(void);
+extern void *OPS_Steel02Fatigue(void);
 extern void *OPS_RambergOsgoodSteel(void);
 extern void *OPS_ReinforcingSteel(void);
 extern void *OPS_Concrete01(void);
 extern void *OPS_Concrete02(void);
+extern void *OPS_Concrete02IS(void);
 extern void *OPS_PinchingLimitStateMaterial(void);
 extern void *OPS_SAWSMaterial(void);
 extern void *OPS_ConcreteZ01Material(void);
@@ -276,7 +279,12 @@ TclModelBuilderUniaxialMaterialCommand (ClientData clientData, Tcl_Interp *inter
 	theMaterial = (UniaxialMaterial *)theMat;
       else 
 	return TCL_ERROR;
-
+    } else if (strcmp(argv[1],"Steel02Fatigue") == 0) {
+      void *theMat = OPS_Steel02Fatigue();
+      if (theMat != 0) 
+	theMaterial = (UniaxialMaterial *)theMat;
+      else 
+	return TCL_ERROR;
     } else if (strcmp(argv[1],"Steel4") == 0) {
       void *theMat = OPS_Steel4();
       if (theMat != 0) 
@@ -314,6 +322,12 @@ TclModelBuilderUniaxialMaterialCommand (ClientData clientData, Tcl_Interp *inter
       */
     } else if (strcmp(argv[1],"Concrete02") == 0) {
       void *theMat = OPS_Concrete02();
+      if (theMat != 0) 
+	theMaterial = (UniaxialMaterial *)theMat;
+      else 
+	return TCL_ERROR;
+    } else if (strcmp(argv[1],"Concrete02IS") == 0) {
+      void *theMat = OPS_Concrete02IS();
       if (theMat != 0) 
 	theMaterial = (UniaxialMaterial *)theMat;
       else 
@@ -812,7 +826,7 @@ TclModelBuilderUniaxialMaterialCommand (ClientData clientData, Tcl_Interp *inter
       
     }
 
-    else if (strcmp(argv[1],"Hardening") == 0) {
+    else if (strcmp(argv[1],"Hardening") == 0 || strcmp(argv[1],"Hardening2") == 0) {
       if (argc < 7) {
 	opserr << "WARNING insufficient arguments\n";
 	printCommand(argc,argv);
@@ -860,7 +874,11 @@ TclModelBuilderUniaxialMaterialCommand (ClientData clientData, Tcl_Interp *inter
 	}
 
 	// Parsing was successful, allocate the material
-	theMaterial = new HardeningMaterial (tag, E, sigmaY, Hiso, Hkin, eta);
+	if (strcmp(argv[1],"Hardening") == 0) {
+	  theMaterial = new HardeningMaterial (tag, E, sigmaY, Hiso, Hkin, eta);
+	} else {
+	  theMaterial = new HardeningMaterial2(tag, E, sigmaY, Hiso, Hkin, eta);
+	}
     }
 
     else if (strcmp(argv[1],"BoucWen") == 0) {
@@ -1247,7 +1265,7 @@ TclModelBuilderUniaxialMaterialCommand (ClientData clientData, Tcl_Interp *inter
     else if (strcmp(argv[1], "Concrete07") == 0) {
       // Check to see if there are enough arquements
       if (argc < 11) {
-	opserr << "WARNING: Insufficient arguements\n";
+	opserr << "WARNING: Insufficient arguments\n";
 	printCommand(argc, argv);
 	opserr << "Want: uniaxialMaterial Concrete07 tag? fpc? epsc0? Ec? fpt? epst0? xcrp? xcrn? r?\n";
 	return TCL_ERROR;
