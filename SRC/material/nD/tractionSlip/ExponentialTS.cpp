@@ -50,13 +50,13 @@ OPS_NewExponentialTS(void)
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 5) {
-        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max" << endln;
+    if (numArgs < 6) {
+        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max beta" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[4];
+    double dData[5];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
@@ -70,8 +70,7 @@ OPS_NewExponentialTS(void)
         return 0;
     }
 
-    theMaterial = new ExponentialTS(iData[0],
-    dData[0], dData[1], dData[2], dData[3]);
+    theMaterial = new ExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4]);
 
     return theMaterial;
 }
@@ -79,9 +78,9 @@ OPS_NewExponentialTS(void)
 
 
 ExponentialTS::ExponentialTS
-(int tag, int classTag, double d1, double d2, double s1, double s2)
+(int tag, int classTag, double d1, double d2, double s1, double s2, double b)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), beta(b)
 {
     // do some input checks
     if (delt < 0)
@@ -92,6 +91,8 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2)
         tau_max = fabs(tau_max);
     if (sig_max < 0)
         sig_max = fabs(sig_max);
+    if (beta <= 0)
+        beta = 1.0;
     
     // derived properties
     phit = delt*tau_max/sqrt(2/exp(1));
@@ -99,9 +100,9 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2)
 }
 
 ExponentialTS::ExponentialTS
-(int tag, double d1, double d2, double s1, double s2)
+(int tag, double d1, double d2, double s1, double s2, double b)
   :NDMaterial(tag, ND_TAG_ExponentialTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), beta(b)
 {
     // derived properties
     phit = delt*tau_max/sqrt(2/exp(1));
@@ -124,7 +125,7 @@ ExponentialTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         ExponentialTS2D *theModel;
-        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max);
+        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, beta);
 
         return theModel;
     }
@@ -312,13 +313,14 @@ ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(5);
+    static Vector data(6);
 
     data(0) = this->getTag();
     data(1) = delt;
     data(2) = deln;
     data(3) = tau_max;
     data(4) = sig_max;
+    data(5) = beta;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -335,7 +337,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
 {
     int res = 0;
 
-    static Vector data(5);
+    static Vector data(6);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -348,6 +350,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
     deln = data(2);
     tau_max = data(3);
     sig_max = data(4);
+    beta = data(5);
     
     return res;
 }
@@ -359,6 +362,7 @@ ExponentialTS::Print (OPS_Stream &s, int flag)
 	s << "\tdelt: " << delt << ", deln: " << deln << endln;
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
     s << "\tphit: " << phit << ", phin: " << phin << endln;
+    s << "\tbeta: " << beta << endln;
 
 	return;
 }

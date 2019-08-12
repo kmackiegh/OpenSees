@@ -41,7 +41,7 @@
 class ExponentialTS2D : public ExponentialTS
 {
   public:
-    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2);
+    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double b);
     ExponentialTS2D();
     ~ExponentialTS2D();
 
@@ -82,6 +82,7 @@ class ExponentialTS2D : public ExponentialTS
     
     // local plane stress storage
     Vector sigma;           // stress vector local
+    Vector Tstress;         // trial stress vector
     Matrix D;               // stiffness matrix local
     Vector epsilon;         // Trial strains
     
@@ -96,6 +97,9 @@ class ExponentialTS2D : public ExponentialTS
     double ETn;
     double ENt;
     double ENn;
+    
+    // history variables
+    double delmax;
     
 };
 

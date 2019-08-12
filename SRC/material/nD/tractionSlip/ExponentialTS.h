@@ -37,11 +37,11 @@ class ExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ExponentialTS (int tag, int classTag,
-                   double d1, double d2, double s1, double s2);
+                   double d1, double d2, double s1, double s2, double b);
 
     // Called by clients
     ExponentialTS (int tag,
-                   double d1, double d2, double s1, double s2);
+                   double d1, double d2, double s1, double s2, double b);
 
     // For parallel processing
     ExponentialTS (void);
@@ -91,10 +91,13 @@ class ExponentialTS : public NDMaterial
     void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
     
   protected:
+    // passed as arguments
     double delt;
     double deln;
     double tau_max;
     double sig_max;
+    double beta;
+    // derived
     double phit;
     double phin;
     
