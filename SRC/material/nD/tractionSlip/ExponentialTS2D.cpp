@@ -30,10 +30,10 @@ Matrix ExponentialTS2D::tangent(2,2);
 Vector ExponentialTS2D::state(4);
 
 ExponentialTS2D::ExponentialTS2D
-(int tag, double d1, double d2, double s1, double s2) :
+(int tag, double d1, double d2, double s1, double s2, double b) :
  ExponentialTS (tag, ND_TAG_ExponentialTS2D,
-                d1, d2, s1, s2),
- sigma(2), D(2,2), epsilon(2),
+                d1, d2, s1, s2, b),
+ sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
     this->initialize();
@@ -41,8 +41,8 @@ ExponentialTS2D::ExponentialTS2D
 
 ExponentialTS2D::ExponentialTS2D():
  ExponentialTS (0, ND_TAG_ExponentialTS2D,
-                0.0, 0.0, 0.0, 0.0),
-sigma(2), D(2,2), epsilon(2),
+                0.0, 0.0, 0.0, 0.0, 0.0),
+sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
     this->initialize();
@@ -58,6 +58,7 @@ ExponentialTS2D::initialize(void)
 {
     // initialize local storage
     sigma.Zero();
+    Tstress.Zero();
     D.Zero();
     epsilon.Zero();
     
@@ -82,6 +83,9 @@ ExponentialTS2D::initialize(void)
     D(1,0) = ENt;
     D(1,1) = ENn;
     
+    // history init
+    delmax = 0;
+    
     return 0;
 }
 
@@ -92,13 +96,36 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     Vector deps = epsilon - Cepsilon;
     
     // trial stress
-    sigma = Cstress + D*deps;
+    Tstress = Cstress + D*deps;
     
-    // send to materials
-    Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
-    Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
+    // effective displacement check
+    double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
     
-    // path independent for now
+    if (deleff > delmax) {
+        // loading condition
+        Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
+        Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
+        delmax = deleff;
+    
+    } else {
+        // unloading or reloading
+        double ct = delmax/deleff;
+        double tETt, tETn, tENt, tENn;
+        Shear_Envlp(strain(0)*ct,strain(1)*ct,sigt,tETt,tETn);
+        Normal_Envlp(strain(0)*ct,strain(1)*ct,sign,tENt,tENn);
+        
+        // factors added to tangent
+        ETt = beta*beta*strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - beta*beta*strain(0)*strain(1)/deleff/deleff*tETn;
+        ETn = strain(1)/delmax/deleff*sigt + beta*beta*strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
+        ENt = beta*beta*strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - beta*beta*strain(0)*strain(1)/deleff/deleff*tENn;
+        ENn = strain(1)/delmax/deleff*sign + beta*beta*strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
+        
+        // correct above stress values
+        sigt = sigt/ct;
+        sign = sign/ct;
+    }
+    
+    // store in vector and matrix form from above
     sigma(0) = sigt;
     sigma(1) = sign;
     D(0,0) = ETt;
@@ -179,7 +206,6 @@ ExponentialTS2D::getState (void)
     
     // NYI
     
-    
     return state;
 }
 
@@ -213,7 +239,7 @@ NDMaterial*
 ExponentialTS2D::getCopy (void)
 {
     ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max);
+        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,beta);
   
     theCopy->sigma = sigma;
     theCopy->D = D;
@@ -241,7 +267,7 @@ int
 ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 {
     opserr << "ExponentialTS2D::sendSelf()" << endln;
-    static Vector data(5);
+    static Vector data(6);
   
     // note this is incomplete, should send other vectors as well?
     data(0) = this->getTag();
@@ -249,6 +275,7 @@ ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
     data(2) = Cepsilon(1);
     data(3) = Cstress(0);
     data(4) = Cstress(1);
+    data(5) = delmax;
   
     int res = theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -264,7 +291,7 @@ ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
 					FEM_ObjectBroker &theBroker)
 {
     opserr << "ExponentialTS2D::recvSelf()" << endln;
-    static Vector data(5);
+    static Vector data(6);
   
     int res = theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -273,10 +300,11 @@ ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
     }
 
     this->setTag((int)data(0));
-    Cepsilon(0)=data(1);
-    Cepsilon(1)=data(2);
-    Cstress(2)=data(3);
-    Cstress(3)=data(4);
+    Cepsilon(0) = data(1);
+    Cepsilon(1) = data(2);
+    Cstress(2) = data(3);
+    Cstress(3) = data(4);
+    delmax = data(5);
 
     epsilon = Cepsilon;
     stress = Cstress;
