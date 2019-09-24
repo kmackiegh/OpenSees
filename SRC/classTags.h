@@ -379,6 +379,8 @@
 #define ND_TAG_LowTensionPlaneStress 66
 #define ND_TAG_ExponentialTS 67
 #define ND_TAG_ExponentialTS2D 68
+#define ND_TAG_ElasticTS 69
+#define ND_TAG_ElasticTS2D 70
 
 #define ND_TAG_FluidSolidPorousMaterial        100
 #define ND_TAG_PressureDependMultiYield		101

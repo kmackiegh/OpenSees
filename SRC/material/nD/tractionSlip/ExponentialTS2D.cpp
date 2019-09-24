@@ -101,7 +101,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     // effective displacement check
     double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
     
-    if (deleff > delmax) {
+    if (deleff >= delmax) {
         // loading condition
         Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
         Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);

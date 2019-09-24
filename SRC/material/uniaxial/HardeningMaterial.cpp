@@ -204,7 +204,10 @@ HardeningMaterial::commitState(void)
 int 
 HardeningMaterial::revertToLastCommit(void)
 {
-  return 0;
+    TplasticStrain = CplasticStrain;
+    Thardening = Chardening;
+    
+    return 0;
 }
 
 int 

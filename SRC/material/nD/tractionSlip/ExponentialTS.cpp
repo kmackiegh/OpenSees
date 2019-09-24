@@ -51,7 +51,7 @@ OPS_NewExponentialTS(void)
     int numArgs = OPS_GetNumRemainingInputArgs();
 
     if (numArgs < 6) {
-        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max beta" << endln;
+        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max $beta" << endln;
         return 0;
     }
 
@@ -380,11 +380,10 @@ ExponentialTS::Shear_Envlp (double Delt, double Deln,
     
     double e1 = exp(-Delnbar);
     double e2 = exp(-Deltbar*Deltbar);
-    double delbar = deln/delt * Delt/Deln;
     
     Tt = 2*phit/delt * Deltbar*(1+Delnbar) * e1 * e2;
-    ETn = 2*delbar*phit/deln/delt * e1*e2 * ( (1+Delnbar)*(1-2*Deltbar*Deltbar-Delnbar) + delbar*Delnbar );
-    ETt = 2*phit/delt/delt * e1*e2 * ( (1+Delnbar)*(1-2*Deltbar*Deltbar-Delnbar) + Deltbar );
+    ETn = -2*phit/deln/delt * e1*e2 * Delnbar*Deltbar;
+    ETt = 2*phit/delt/delt * e1*e2 * (1+Delnbar)*(1-2*Deltbar*Deltbar);
     
     return;
 }
@@ -402,11 +401,10 @@ ExponentialTS::Normal_Envlp (double Delt, double Deln,
     
     double e1 = exp(-Delnbar);
     double e2 = exp(-Deltbar*Deltbar);
-    double delbar = deln/delt * Delt/Deln;
     
-    Tn = phin/deln * e1 * e2;
-    ENn = phin/deln/deln * e1*e2 * ( 1-Delnbar*(1+2*Deltbar*delbar) );
-    ENt = phin/deln/delt * e1*e2 * ( 1-Delnbar*(1+2*Deltbar*delbar) ) / delbar;
+    Tn = phin/deln * Delnbar * e1 * e2;
+    ENn = phin/deln/deln * e1*e2 * (1-Delnbar);
+    ENt = -2*phin/deln/delt * e1*e2 * Delnbar*Deltbar;
     
     return;
 }
