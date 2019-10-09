@@ -108,6 +108,7 @@ class CohesiveZoneQuad : public Element
 
     double thickness;	        // Element thickness
     Vector vecn;                // outward normal vector
+    int indx[4];                // node numbering index
     static double shp[3][4];	// Stores shape functions and derivatives (overwritten)
     static double pts[2][2];	// Stores quadrature points
     static double wts[2];		// Stores quadrature weights

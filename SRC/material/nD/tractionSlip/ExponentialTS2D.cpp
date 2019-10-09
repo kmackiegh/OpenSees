@@ -27,7 +27,7 @@
 
 Vector ExponentialTS2D::stress(2);
 Matrix ExponentialTS2D::tangent(2,2);
-Vector ExponentialTS2D::state(4);
+Vector ExponentialTS2D::state(1);
 
 ExponentialTS2D::ExponentialTS2D
 (int tag, double d1, double d2, double s1, double s2, double b) :
@@ -202,9 +202,8 @@ ExponentialTS2D::getStrain (void)
 const Vector&
 ExponentialTS2D::getState (void)
 {
-    double pi = acos(-1.0);
-    
-    // NYI
+    // store quantities in output vector
+    state(0) = delmax;
     
     return state;
 }
