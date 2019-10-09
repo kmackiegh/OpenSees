@@ -27,7 +27,7 @@
 
 Vector ElasticTS2D::stress(2);
 Matrix ElasticTS2D::tangent(2,2);
-Vector ElasticTS2D::state(4);
+Vector ElasticTS2D::state(1);
 
 ElasticTS2D::ElasticTS2D
 (int tag, double d1, double d2, double s1, double s2) :
@@ -176,9 +176,8 @@ ElasticTS2D::getStrain (void)
 const Vector&
 ElasticTS2D::getState (void)
 {
-    double pi = acos(-1.0);
-    
-    // NYI
+    // store quantities in output vector
+    state(0) = 0;
     
     return state;
 }

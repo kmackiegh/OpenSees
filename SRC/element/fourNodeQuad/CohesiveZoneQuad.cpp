@@ -110,6 +110,9 @@ void* OPS_CohesiveZoneQuad()
             }
         }
     }
+    
+    // easier to make sure it's a unit vector here
+    vecn = vecn / vecn.Norm();
 
     // create element
     return new CohesiveZoneQuad(idata[0],idata[1],idata[2],idata[3],idata[4],
@@ -130,6 +133,12 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
   theMaterial(0), connectedExternalNodes(4), 
  Q(8), thickness(t), vecn(_vec), Ki(0)
 {
+    // default node indexing
+    int i;
+    for (i=0; i < 4; i++)
+        indx[i] = i;
+    
+    // integration scheme
 	pts[0][0] = -0.5773502691896258;
 	pts[0][1] =  0;
 	pts[1][0] =  0.5773502691896258;
@@ -146,7 +155,6 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
       exit(-1);
     }
 
-	int i;
     for (i = 0; i < 2; i++) {
       // Get copies of the material model for each integration point
       theMaterial[i] = m.getCopy("2D");
@@ -173,16 +181,18 @@ CohesiveZoneQuad::CohesiveZoneQuad()
   theMaterial(0), connectedExternalNodes(4), 
  Q(8), thickness(0.0), vecn(0), Ki(0)
 {
-  pts[0][0] = -0.577350269189626;
-  pts[0][1] =  0;
-  pts[1][0] =  0.577350269189626;
-  pts[1][1] =  0;
+    pts[0][0] = -0.577350269189626;
+    pts[0][1] =  0;
+    pts[1][0] =  0.577350269189626;
+    pts[1][1] =  0;
+
+    wts[0] = 1.0;
+    wts[1] = 1.0;
   
-  wts[0] = 1.0;
-  wts[1] = 1.0;
-  
-  for (int i=0; i<4; i++)
-      theNodes[i] = 0;
+    for (int i=0; i<4; i++) {
+        theNodes[i] = 0;
+        indx[i] = i;
+    }
 }
 
 CohesiveZoneQuad::~CohesiveZoneQuad()
@@ -265,6 +275,46 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
     }
     this->DomainComponent::setDomain(theDomain);
 
+    // check the outward normal vector to find the face it's perpendicular to
+    Vector l12 = theNodes[1]->getCrds() - theNodes[0]->getCrds();
+    Vector l23 = theNodes[2]->getCrds() - theNodes[1]->getCrds();
+    Vector l34 = theNodes[3]->getCrds() - theNodes[2]->getCrds();
+    Vector l41 = theNodes[0]->getCrds() - theNodes[3]->getCrds();
+    
+    Vector crossk(4);
+    crossk(0) = vecn(0)*l12(1) - vecn(1)*l12(0);
+    crossk(1) = vecn(0)*l23(1) - vecn(1)*l23(0);
+    crossk(2) = vecn(0)*l34(1) - vecn(1)*l34(0);
+    crossk(3) = vecn(0)*l41(1) - vecn(1)*l41(0);
+    
+    int vface = 0;
+    double kcrit = crossk(0);
+    if ( crossk(1) > kcrit) {
+        vface = 1;
+        kcrit = crossk(1);
+    }
+    if ( crossk(2) > kcrit) {
+        vface = 2;
+        kcrit = crossk(2);
+    }
+    if ( crossk(3) > kcrit) {
+        vface = 3;
+        kcrit = crossk(3);
+    }
+    
+    // renumber node indices so outward normal always points in positive eta direction
+    vface = vface - 2;
+    for (int kl = 0; kl < 4; kl++) {
+        if (vface < 0)
+            vface = vface+4;
+        if (vface > 3)
+            vface = vface-4;
+        
+        indx[vface] = kl;
+        vface++;
+    }
+    
+    opserr << "final node index order in natural system is " << indx[0] << " " << indx[1] << " " << indx[2] << " " << indx[3] << endln;
 }
 
 int
@@ -312,10 +362,10 @@ CohesiveZoneQuad::revertToStart()
 int
 CohesiveZoneQuad::update()
 {
-	const Vector &disp1 = theNodes[0]->getTrialDisp();
-	const Vector &disp2 = theNodes[1]->getTrialDisp();
-	const Vector &disp3 = theNodes[2]->getTrialDisp();
-	const Vector &disp4 = theNodes[3]->getTrialDisp();
+	const Vector &disp1 = theNodes[indx[0]]->getTrialDisp();
+	const Vector &disp2 = theNodes[indx[1]]->getTrialDisp();
+	const Vector &disp3 = theNodes[indx[2]]->getTrialDisp();
+	const Vector &disp4 = theNodes[indx[3]]->getTrialDisp();
 	
 	static double u[2][4];
 
@@ -346,6 +396,7 @@ CohesiveZoneQuad::update()
 
 		// Set the material displacements
 		ret += theMaterial[i]->setTrialStrain(dsp);
+        opserr << "   CZQuad IP" << i+1 << " has prescribed slips of " << dsp;
 	}
 
 	return ret;
@@ -382,9 +433,14 @@ CohesiveZoneQuad::getTangentStiff()
         //   beta < 4;
         //   beta++, ib += 2, colIb += 16, colIbP1 += 16) {
 
-        for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-            for (int beta = 0, ib = 0; beta < 4; beta++, ib += 2) {
-	      
+        for (int alpha = 0; alpha < 4; alpha++) {
+            // need indx mapping to nodal dofs
+            int ia = indx[alpha]*2;
+            
+            for (int beta = 0; beta < 4; beta++) {
+                // need indx mapping to nodal dofs
+                int ib = indx[beta]*2;
+                
                 DB[0][0] = dvol * D00 * shp[2][beta];
                 DB[1][0] = dvol * D10 * shp[2][beta];
                 DB[0][1] = dvol * D01 * shp[2][beta];
@@ -430,12 +486,17 @@ CohesiveZoneQuad::getInitialStiff()
         // Perform numerical integration
         //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
         //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
-        for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8;
+        for (int beta = 0, colIb = 0, colIbP1 = 8;
             beta < 4;
-            beta++, ib += 2, colIb += 16, colIbP1 += 16) {
+            beta++, colIb += 16, colIbP1 += 16) {
+            
+            // need indx mapping to nodal dofs
+            int ib = indx[beta]*2;
 
-            for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
-
+            for (int alpha = 0; alpha < 4; alpha++) {
+                // need indx mapping to nodal dofs
+                int ia = indx[alpha]*2;
+                
                 DB[0][0] = dvol * D00 * shp[2][beta];
                 DB[1][0] = dvol * D10 * shp[2][beta];
                 DB[0][1] = dvol * D01 * shp[2][beta];
@@ -497,11 +558,14 @@ CohesiveZoneQuad::getResistingForce()
 
 		// Get material stress response
 		const Vector &sigma = theMaterial[i]->getStress();
+        opserr << "   CZQuad IP" << i+1 << " returned stresses of " << sigma;
 
 		// Perform numerical integration on internal force
 		//P = P + (B^ sigma) * intWt(i)*intWt(j) * detJ;
 		//P.addMatrixTransposeVector(1.0, B, sigma, intWt(i)*intWt(j)*detJ);
-		for (int alpha = 0, ia = 0; alpha < 4; alpha++, ia += 2) {
+		for (int alpha = 0; alpha < 4; alpha++) {
+            // need indx mapping to nodal dofs
+            int ia = indx[alpha]*2;
 			P(ia) += dvol*shp[2][alpha]*sigma(0);
 			P(ia+1) += dvol*shp[2][alpha]*sigma(1);
 		}
@@ -746,13 +810,13 @@ CohesiveZoneQuad::displaySelf(Renderer &theViewer, int displayMode, float fact, 
 {
 
     // first set the quantity to be displayed at the nodes;
-    // if displayMode is 1 through 3 we will plot material stresses otherwise 0.0
+    // if displayMode is 1 through 2 we will plot material stresses otherwise 0.0
     static Vector values(2);
 
     for (int j=0; j<2; j++)
 	   values(j) = 0.0;
 
-    if (displayMode < 4 && displayMode > 0) {
+    if (displayMode < 3 && displayMode > 0) {
         for (int i=0; i<2; i++) {
             const Vector &stress = theMaterial[i]->getStress();
             values(i) = stress(displayMode-1);
@@ -818,7 +882,7 @@ Response*
 CohesiveZoneQuad::setResponse(const char **argv, int argc,
 			  OPS_Stream &output)
 {
-  Response *theResponse =0;
+  Response *theResponse = 0;
 
   output.tag("ElementOutput");
   output.attr("eleType","CohesiveZoneQuad");
@@ -830,7 +894,6 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
 
   char dataOut[10];
   if (strcmp(argv[0],"force") == 0 || strcmp(argv[0],"forces") == 0) {
-
     for (int i=1; i<=4; i++) {
       sprintf(dataOut,"P1_%d",i);
       output.tag("ResponseType",dataOut);
@@ -842,7 +905,6 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
   }   
 
   else if (strcmp(argv[0],"material") == 0 || strcmp(argv[0],"integrPoint") == 0) {
-    
     int pointNum = atoi(argv[1]);
     if (pointNum > 0 && pointNum <= 2) {
       
@@ -857,6 +919,7 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
 
     }
   }
+    
   else if ((strcmp(argv[0],"stresses") ==0) || (strcmp(argv[0],"stress") ==0)) {
     for (int i=0; i<2; i++) {
       output.tag("GaussPoint");
@@ -906,11 +969,9 @@ int
 CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
 {
   if (responseID == 1) {
-
     return eleInfo.setVector(this->getResistingForce());
 
   } else if (responseID == 3) {
-
     // Loop over the integration points
     static Vector stresses(4);
     int cnt = 0;
@@ -926,7 +987,6 @@ CohesiveZoneQuad::getResponse(int responseID, Information &eleInfo)
     return eleInfo.setVector(stresses);
       
   } else if (responseID == 4) {
-
     // Loop over the integration points
     static Vector stresses(4);
     int cnt = 0;
@@ -1005,10 +1065,10 @@ CohesiveZoneQuad::updateParameter(int parameterID, Information &info)
 
 double CohesiveZoneQuad::shapeFunction(double xi, double eta)
 {
-	const Vector &nd1Crds = theNodes[0]->getCrds();
-	const Vector &nd2Crds = theNodes[1]->getCrds();
-	const Vector &nd3Crds = theNodes[2]->getCrds();
-	const Vector &nd4Crds = theNodes[3]->getCrds();
+	const Vector &nd1Crds = theNodes[indx[0]]->getCrds();
+	const Vector &nd2Crds = theNodes[indx[1]]->getCrds();
+	const Vector &nd3Crds = theNodes[indx[2]]->getCrds();
+	const Vector &nd4Crds = theNodes[indx[3]]->getCrds();
 
 	double oneMinuseta = 1.0-eta;
 	double onePluseta = 1.0+eta;

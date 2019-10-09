@@ -276,9 +276,9 @@ ElasticTS::setResponse (const char **argv, int argc, OPS_Stream &output)
     
 	if (strcmp(argv[0],"stress") == 0 || strcmp(argv[0],"stresses") == 0)
 		return new MaterialResponse(this, 1, this->getStress());
-	else if (strcmp(argv[0],"strain") == 0 || strcmp(argv[0],"strains") == 0)
+	else if (strcmp(argv[0],"slip") == 0 || strcmp(argv[0],"deformation") == 0)
 		return new MaterialResponse(this, 2, this->getStrain());
-	else if (strcmp(argv[0], "state") == 0)
+	else if (strcmp(argv[0],"state") == 0)
 		return new MaterialResponse(this, 3, this->getState());
 	else
 		return 0;
@@ -383,8 +383,13 @@ ElasticTS::Normal_Envlp (double Delt, double Deln,
     // shear monotonic envelope function
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
-    Tn = kin*Deln;
-    ENn = kin;
+    // compression normal multiplier
+    double cmult = 1.0;
+    if (Deln < 0)
+        cmult = 10.0;
+    
+    Tn = (cmult*kin)*Deln;
+    ENn = cmult*kin;
     ENt = 0;
     
     return;
