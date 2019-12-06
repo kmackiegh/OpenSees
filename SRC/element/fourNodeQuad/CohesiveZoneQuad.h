@@ -101,19 +101,19 @@ class CohesiveZoneQuad : public Element
     ID connectedExternalNodes; // Tags of quad nodes
     Node *theNodes[4];
 
-    static double matrixData[64];  // array data for matrix
     static Matrix K;		// Element stiffness, damping, and mass Matrix
     static Vector P;		// Element resisting force vector
     Vector Q;		        // Applied nodal loads
 
     double thickness;	        // Element thickness
     Vector vecn;                // outward normal vector
+    Matrix ae;                  // transformation matrix
     int indx[4];                // node numbering index
-    static double shp[3][4];	// Stores shape functions and derivatives (overwritten)
-    static double pts[2][2];	// Stores quadrature points
+    static double shp[3][2];	// Stores shape functions and derivatives (overwritten)
+    static double pts[2];   	// Stores quadrature points
     static double wts[2];		// Stores quadrature weights
 
-    double shapeFunction(double xi, double eta);
+    double shapeFunction(double xi);
 
     Matrix *Ki;
 };

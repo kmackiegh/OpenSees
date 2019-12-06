@@ -120,18 +120,18 @@ void* OPS_CohesiveZoneQuad()
 }
 
 
-double CohesiveZoneQuad::matrixData[64];
-Matrix CohesiveZoneQuad::K(matrixData, 8, 8);
+Matrix CohesiveZoneQuad::K(8,8);
 Vector CohesiveZoneQuad::P(8);
-double CohesiveZoneQuad::shp[3][4];
-double CohesiveZoneQuad::pts[2][2];
+double CohesiveZoneQuad::shp[3][2];
+double CohesiveZoneQuad::pts[2];
 double CohesiveZoneQuad::wts[2];
+
 
 CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 			   NDMaterial &m, double t, const Vector _vec)
 :Element (tag, ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(t), vecn(_vec), Ki(0)
+ Q(8), thickness(t), vecn(_vec), ae(4,8), Ki(0)
 {
     // default node indexing
     int i;
@@ -139,31 +139,28 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
         indx[i] = i;
     
     // integration scheme
-	pts[0][0] = -0.5773502691896258;
-	pts[0][1] =  0;
-	pts[1][0] =  0.5773502691896258;
-	pts[1][1] =  0;
-
+	pts[0] = -0.5773502691896258;
+	pts[1] =  0.5773502691896258;
 	wts[0] = 1.0;
-	wts[1] = 1.0;
+    wts[1] = 1.0;
 
     // Allocate arrays of pointers to NDMaterials
     theMaterial = new NDMaterial *[2];
     
     if (theMaterial == 0) {
-      opserr << "CohesiveZoneQuad::CohesiveZoneQuad - failed allocate material model pointer\n";
-      exit(-1);
+        opserr << "CohesiveZoneQuad::CohesiveZoneQuad - failed allocate material model pointer\n";
+        exit(-1);
     }
 
     for (i = 0; i < 2; i++) {
-      // Get copies of the material model for each integration point
-      theMaterial[i] = m.getCopy("2D");
-			
-      // Check allocation
-      if (theMaterial[i] == 0) {
-        opserr << "CohesiveZoneQuad::CohesiveZoneQuad -- failed to get a copy of material model\n";
-        exit(-1);
-      }
+        // Get copies of the material model for each integration point
+        theMaterial[i] = m.getCopy("2D");
+            
+        // Check allocation
+        if (theMaterial[i] == 0) {
+            opserr << "CohesiveZoneQuad::CohesiveZoneQuad -- failed to get a copy of material model\n";
+            exit(-1);
+        }
     }
 
     // Set connected external node IDs
@@ -173,19 +170,17 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
     connectedExternalNodes(3) = nd4;
     
     for (i=0; i<4; i++)
-      theNodes[i] = 0;
+        theNodes[i] = 0;
 }
 
 CohesiveZoneQuad::CohesiveZoneQuad()
 :Element (0,ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(0.0), vecn(0), Ki(0)
+ Q(8), thickness(0.0), vecn(0), ae(4,8), Ki(0)
 {
-    pts[0][0] = -0.577350269189626;
-    pts[0][1] =  0;
-    pts[1][0] =  0.577350269189626;
-    pts[1][1] =  0;
-
+    // integration scheme
+    pts[0] = -0.5773502691896258;
+    pts[1] =  0.5773502691896258;
     wts[0] = 1.0;
     wts[1] = 1.0;
   
@@ -226,7 +221,7 @@ CohesiveZoneQuad::getExternalNodes()
 Node **
 CohesiveZoneQuad::getNodePtrs(void)
 {
-  return theNodes;
+    return theNodes;
 }
 
 int
@@ -315,6 +310,17 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
     }
     
     opserr << "final node index order in natural system is " << indx[0] << " " << indx[1] << " " << indx[2] << " " << indx[3] << endln;
+    
+    
+    // transformation matrix
+    ae.Zero();
+    for (int kl = 0; kl < 4; kl++) {
+        ae(kl,kl) = -1;
+        int rowno = kl+2;
+        if (rowno > 3)
+            rowno = rowno - 4;
+        ae(rowno,kl+4) = 1;
+    }
 }
 
 int
@@ -362,36 +368,33 @@ CohesiveZoneQuad::revertToStart()
 int
 CohesiveZoneQuad::update()
 {
+    // use reordered indices from indx
 	const Vector &disp1 = theNodes[indx[0]]->getTrialDisp();
 	const Vector &disp2 = theNodes[indx[1]]->getTrialDisp();
 	const Vector &disp3 = theNodes[indx[2]]->getTrialDisp();
 	const Vector &disp4 = theNodes[indx[3]]->getTrialDisp();
 	
-	static double u[2][4];
+	Vector delu(4);
+    delu.Zero();
 
-	u[0][0] = disp1(0);
-	u[1][0] = disp1(1);
-	u[0][1] = disp2(0);
-	u[1][1] = disp2(1);
-	u[0][2] = disp3(0);
-	u[1][2] = disp3(1);
-	u[0][3] = disp4(0);
-	u[1][3] = disp4(1);
-
+	// relative displacements, this is the transformation A * ue
+	delu(0) = disp4(0)-disp1(0);	delu(1) = disp4(1)-disp1(1);
+	delu(2) = disp3(0)-disp2(0);	delu(3) = disp3(1)-disp2(1);
+    
 	int ret = 0;
-    static Vector dsp(2);
+    Vector dsp(2);
 
 	// Loop over the integration points
 	for (int i = 0; i < 2; i++) {
 
 		// Determine Jacobian for this integration point
-		this->shapeFunction(pts[i][0], pts[i][1]);
+		this->shapeFunction(pts[i]);
 
         // Interpolate displacement
 		dsp.Zero();
-		for (int beta = 0; beta < 4; beta++) {
-			dsp(0) += shp[2][beta]*u[0][beta];
-			dsp(1) += shp[2][beta]*u[1][beta];
+		for (int beta = 0; beta < 2; beta++) {
+			dsp(0) += shp[2][beta]*delu(beta*2);
+			dsp(1) += shp[2][beta]*delu(beta*2+1);
 		}
 
 		// Set the material displacements
@@ -407,16 +410,15 @@ const Matrix&
 CohesiveZoneQuad::getTangentStiff()
 {
 
-	K.Zero();
-
 	double dvol;
-	double DB[2][2];
+    Matrix delk(4,4);
+    delk.Zero();
 
 	// Loop over the integration points
 	for (int i = 0; i < 2; i++) {
 
         // Determine Jacobian for this integration point
-        dvol = this->shapeFunction(pts[i][0], pts[i][1]);
+        dvol = this->shapeFunction(pts[i]);
         dvol *= (thickness*wts[i]);
 
         // Get the material tangent
@@ -428,32 +430,42 @@ CohesiveZoneQuad::getTangentStiff()
 
         double D00 = D(0,0); double D01 = D(0,1);
         double D10 = D(1,0); double D11 = D(1,1);
+        opserr << "inside getTangent, IP returning stiffness " << D;
 
-        //	  for (int beta = 0, ib = 0, colIb =0, colIbP1 = 8;
-        //   beta < 4;
-        //   beta++, ib += 2, colIb += 16, colIbP1 += 16) {
-
-        for (int alpha = 0; alpha < 4; alpha++) {
-            // need indx mapping to nodal dofs
-            int ia = indx[alpha]*2;
+        for (int alpha = 0; alpha < 2; alpha++) {
+            int ia = alpha*2;
             
-            for (int beta = 0; beta < 4; beta++) {
-                // need indx mapping to nodal dofs
-                int ib = indx[beta]*2;
+            for (int beta = 0; beta < 2; beta++) {
+                int ib = beta*2;
                 
-                DB[0][0] = dvol * D00 * shp[2][beta];
-                DB[1][0] = dvol * D10 * shp[2][beta];
-                DB[0][1] = dvol * D01 * shp[2][beta];
-                DB[1][1] = dvol * D11 * shp[2][beta];
-
-                K(ia,ib) += shp[2][alpha]*DB[0][0];
-                K(ia,ib+1) += shp[2][alpha]*DB[0][1];
-                K(ia+1,ib) += shp[2][alpha]*DB[1][0];
-                K(ia+1,ib+1) += shp[2][alpha]*DB[1][1];
-
+                delk(ia,ib) += dvol * shp[2][alpha] * D00 * shp[2][beta];
+                delk(ia,ib+1) += dvol * shp[2][alpha] * D01 * shp[2][beta];
+                delk(ia+1,ib) += dvol * shp[2][alpha] * D10 * shp[2][beta];
+                delk(ia+1,ib+1) += dvol * shp[2][alpha] * D11 * shp[2][beta];
             }
         }
 	}
+    opserr << delk;
+    
+    // need A^T * k * A and then indx mapping to nodal dofs
+    K.Zero();
+    Matrix Ktemp = K;
+    Ktemp.addMatrixTripleProduct(1.0,ae,delk,1.0);
+    
+    for (int alpha = 0; alpha < 4; alpha++) {
+        int ia = indx[alpha]*2;
+        
+        for (int beta = 0; beta < 4; beta++) {
+            int ib = indx[beta]*2;
+            
+            K(ia,ib) = Ktemp(alpha*2,beta*2);
+            K(ia,ib+1) = Ktemp(alpha*2,beta*2+1);
+            K(ia+1,ib) = Ktemp(alpha*2+1,beta*2);
+            K(ia+1,ib+1) = Ktemp(alpha*2+1,beta*2+1);
+        }
+    }
+    
+	opserr << "tangent stiffness = " << K;
 	
 	return K;
 }
@@ -465,16 +477,15 @@ CohesiveZoneQuad::getInitialStiff()
     if (Ki != 0)
         return *Ki;
 
-    K.Zero();
-
     double dvol;
-    double DB[2][2];
+    Matrix delk(4,4);
+    delk.Zero();
 
     // Loop over the integration points
     for (int i = 0; i < 2; i++) {
 
         // Determine Jacobian for this integration point
-        dvol = this->shapeFunction(pts[i][0], pts[i][1]);
+        dvol = this->shapeFunction(pts[i]);
         dvol *= (thickness*wts[i]);
 
         // Get the material tangent
@@ -483,30 +494,35 @@ CohesiveZoneQuad::getInitialStiff()
         double D00 = D(0,0); double D01 = D(0,1);
         double D10 = D(1,0); double D11 = D(1,1);
 
-        // Perform numerical integration
-        //K = K + (B^ D * B) * intWt(i)*intWt(j) * detJ;
-        //K.addMatrixTripleProduct(1.0, B, D, intWt(i)*intWt(j)*detJ);
-        for (int beta = 0, colIb = 0, colIbP1 = 8;
-            beta < 4;
-            beta++, colIb += 16, colIbP1 += 16) {
+        for (int alpha = 0; alpha < 2; alpha++) {
+            int ia = alpha*2;
             
-            // need indx mapping to nodal dofs
-            int ib = indx[beta]*2;
-
-            for (int alpha = 0; alpha < 4; alpha++) {
-                // need indx mapping to nodal dofs
-                int ia = indx[alpha]*2;
+            for (int beta = 0; beta < 2; beta++) {
+                int ib = beta*2;
                 
-                DB[0][0] = dvol * D00 * shp[2][beta];
-                DB[1][0] = dvol * D10 * shp[2][beta];
-                DB[0][1] = dvol * D01 * shp[2][beta];
-                DB[1][1] = dvol * D11 * shp[2][beta];
-
-                matrixData[colIb   +   ia] += shp[2][alpha]*DB[0][0];
-                matrixData[colIbP1 +   ia] += shp[2][alpha]*DB[0][1];
-                matrixData[colIb   + ia+1] += shp[2][alpha]*DB[1][0];
-                matrixData[colIbP1 + ia+1] += shp[2][alpha]*DB[1][1];
+                delk(ia,ib) += dvol * shp[2][alpha] * D00 * shp[2][beta];
+                delk(ia,ib+1) += dvol * shp[2][alpha] * D01 * shp[2][beta];
+                delk(ia+1,ib) += dvol * shp[2][alpha] * D10 * shp[2][beta];
+                delk(ia+1,ib+1) += dvol * shp[2][alpha] * D11 * shp[2][beta];
             }
+        }
+    }
+    
+    // need A^T * k * A and then indx mapping to nodal dofs
+    K.Zero();
+    Matrix Ktemp = K;
+    Ktemp.addMatrixTripleProduct(1.0,ae,delk,1.0);
+    
+    for (int alpha = 0; alpha < 4; alpha++) {
+        int ia = indx[alpha]*2;
+        
+        for (int beta = 0; beta < 4; beta++) {
+            int ib = indx[beta]*2;
+            
+            K(ia,ib) = Ktemp(alpha*2,beta*2);
+            K(ia,ib+1) = Ktemp(alpha*2,beta*2+1);
+            K(ia+1,ib) = Ktemp(alpha*2+1,beta*2);
+            K(ia+1,ib+1) = Ktemp(alpha*2+1,beta*2+1);
         }
     }
 
@@ -545,15 +561,15 @@ CohesiveZoneQuad::addInertiaLoadToUnbalance(const Vector &accel)
 const Vector&
 CohesiveZoneQuad::getResistingForce()
 {
-	P.Zero();
-
 	double dvol;
+    Vector delp(4);
+    delp.Zero();
 
 	// Loop over the integration points
 	for (int i = 0; i < 2; i++) {
 
 		// Determine Jacobian for this integration point
-		dvol = this->shapeFunction(pts[i][0], pts[i][1]);
+		dvol = this->shapeFunction(pts[i]);
 		dvol *= (thickness*wts[i]);
 
 		// Get material stress response
@@ -561,19 +577,29 @@ CohesiveZoneQuad::getResistingForce()
         opserr << "   CZQuad IP" << i+1 << " returned stresses of " << sigma;
 
 		// Perform numerical integration on internal force
-		//P = P + (B^ sigma) * intWt(i)*intWt(j) * detJ;
-		//P.addMatrixTransposeVector(1.0, B, sigma, intWt(i)*intWt(j)*detJ);
-		for (int alpha = 0; alpha < 4; alpha++) {
-            // need indx mapping to nodal dofs
-            int ia = indx[alpha]*2;
-			P(ia) += dvol*shp[2][alpha]*sigma(0);
-			P(ia+1) += dvol*shp[2][alpha]*sigma(1);
+		//P = P + (N^ sigma) * intWt * detJ;
+        for (int alpha = 0; alpha < 2; alpha++) {
+            int ia = alpha*2;
+            delp(ia) += dvol*shp[2][alpha]*sigma(0);
+			delp(ia+1) += dvol*shp[2][alpha]*sigma(1);
 		}
 	}
 	
+    // need A^T * q and then indx mapping to nodal dofs
+    P.Zero();
+    Vector Ptemp = P;
+    Ptemp.addMatrixTransposeVector(1.0,ae,delp,1.0);
+
+    for (int alpha = 0; alpha < 4; alpha++) {
+        int ia = indx[alpha]*2;
+        P(ia) = Ptemp(alpha*2);
+        P(ia+1) = Ptemp(alpha*2+1);
+    }
+    
 	// Subtract other external nodal loads ... P_res = P_int - P_ext
 	//P = P - Q;
 	P.addVector(1.0, Q, -1.0);
+	opserr << "Resisting force = " << P;
 
 	return P;
 }
@@ -910,8 +936,7 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
       
       output.tag("GaussPoint");
       output.attr("number",pointNum);
-      output.attr("eta",pts[pointNum-1][0]);
-      output.attr("neta",pts[pointNum-1][1]);
+      output.attr("xi",pts[pointNum-1]);
 
       theResponse =  theMaterial[pointNum-1]->setResponse(&argv[2], argc-2, output);
       
@@ -924,8 +949,7 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
     for (int i=0; i<2; i++) {
       output.tag("GaussPoint");
       output.attr("number",i+1);
-      output.attr("eta",pts[i][0]);
-      output.attr("neta",pts[i][1]);
+      output.attr("xi",pts[i]);
 
       output.tag("NdMaterialOutput");
       output.attr("classType", theMaterial[i]->getClassTag());
@@ -944,8 +968,7 @@ CohesiveZoneQuad::setResponse(const char **argv, int argc,
     for (int i=0; i<2; i++) {
       output.tag("GaussPoint");
       output.attr("number",i+1);
-      output.attr("eta",pts[i][0]);
-      output.attr("neta",pts[i][1]);
+      output.attr("xi",pts[i]);
 
       output.tag("NdMaterialOutput");
       output.attr("classType", theMaterial[i]->getClassTag());
@@ -1063,72 +1086,51 @@ CohesiveZoneQuad::updateParameter(int parameterID, Information &info)
     }
 }
 
-double CohesiveZoneQuad::shapeFunction(double xi, double eta)
+double CohesiveZoneQuad::shapeFunction(double xi)
 {
 	const Vector &nd1Crds = theNodes[indx[0]]->getCrds();
 	const Vector &nd2Crds = theNodes[indx[1]]->getCrds();
 	const Vector &nd3Crds = theNodes[indx[2]]->getCrds();
 	const Vector &nd4Crds = theNodes[indx[3]]->getCrds();
 
+    // retaining only xi for interface
+    double eta = 0;
 	double oneMinuseta = 1.0-eta;
-	double onePluseta = 1.0+eta;
-	double oneMinusxi = 1.0-xi;
-	double onePlusxi = 1.0+xi;
+    double onePluseta = 1.0+eta;
+    double oneMinusxi = 1.0-xi;
+    double onePlusxi = 1.0+xi;
 
-	shp[2][0] = 0.25*oneMinusxi*oneMinuseta;	// N_1
-	shp[2][1] = 0.25*onePlusxi*oneMinuseta;		// N_2
-	shp[2][2] = 0.25*onePlusxi*onePluseta;		// N_3
-	shp[2][3] = 0.25*oneMinusxi*onePluseta;		// N_4
+	shp[2][0] = 0.5*oneMinusxi;	    // N_1
+	shp[2][1] = 0.5*onePlusxi;		// N_2
 
-	double J[2][2];
+    // but to get the Jacobian we retain the original shape functions to get element dimensions
+    // note that by sampling with eta = 0, we cannot get correct Jacobian for distorted element
+    double J[2][2];
+    
+    J[0][0] = 0.25 * (-nd1Crds(0)*oneMinuseta + nd2Crds(0)*oneMinuseta +
+                nd3Crds(0)*(onePluseta) - nd4Crds(0)*(onePluseta));
 
-	J[0][0] = 0.25 * (-nd1Crds(0)*oneMinuseta + nd2Crds(0)*oneMinuseta +
-				nd3Crds(0)*(onePluseta) - nd4Crds(0)*(onePluseta));
+    J[0][1] = 0.25 * (-nd1Crds(0)*oneMinusxi - nd2Crds(0)*onePlusxi +
+                nd3Crds(0)*onePlusxi + nd4Crds(0)*oneMinusxi);
 
-	J[0][1] = 0.25 * (-nd1Crds(0)*oneMinusxi - nd2Crds(0)*onePlusxi +
-				nd3Crds(0)*onePlusxi + nd4Crds(0)*oneMinusxi);
+    J[1][0] = 0.25 * (-nd1Crds(1)*oneMinuseta + nd2Crds(1)*oneMinuseta +
+                nd3Crds(1)*onePluseta - nd4Crds(1)*onePluseta);
 
-	J[1][0] = 0.25 * (-nd1Crds(1)*oneMinuseta + nd2Crds(1)*oneMinuseta +
-				nd3Crds(1)*onePluseta - nd4Crds(1)*onePluseta);
+    J[1][1] = 0.25 * (-nd1Crds(1)*oneMinusxi - nd2Crds(1)*onePlusxi +
+                nd3Crds(1)*onePlusxi + nd4Crds(1)*oneMinusxi);
 
-	J[1][1] = 0.25 * (-nd1Crds(1)*oneMinusxi - nd2Crds(1)*onePlusxi +
-				nd3Crds(1)*onePlusxi + nd4Crds(1)*oneMinusxi);
-
-	double detJ = J[0][0]*J[1][1] - J[0][1]*J[1][0];
-	double oneOverdetJ = 1.0/detJ;
-	double L[2][2];
-
-	// L = inv(J)
-	L[0][0] =  J[1][1]*oneOverdetJ;
-	L[1][0] = -J[0][1]*oneOverdetJ;
-	L[0][1] = -J[1][0]*oneOverdetJ;
-	L[1][1] =  J[0][0]*oneOverdetJ;
-
-    double L00 = 0.25*L[0][0];
-    double L10 = 0.25*L[1][0];
-    double L01 = 0.25*L[0][1];
-    double L11 = 0.25*L[1][1];
+    double detJ = J[0][0]*J[1][1] - J[0][1]*J[1][0];
+    opserr << "detJ at xi = " << xi << " is " << detJ << endln;
+    
+    // to make loops easier, multiply by 2/h0 here
+	//double detJ = J[0]/2;
+    
+	// shape function derivatives not yet completed properly
+    shp[0][0] = 0;	        // N_1,1
+    shp[0][1] = 0;		    // N_2,1
 	
-	double L00oneMinuseta = L00*oneMinuseta;
-	double L00onePluseta  = L00*onePluseta;
-	double L01oneMinusxi  = L01*oneMinusxi;
-	double L01onePlusxi   = L01*onePlusxi;
-
-	double L10oneMinuseta = L10*oneMinuseta;
-	double L10onePluseta  = L10*onePluseta;
-	double L11oneMinusxi  = L11*oneMinusxi;
-	double L11onePlusxi   = L11*onePlusxi;
-
-	// See Cook, Malkus, Plesha p. 169 for the derivation of these terms
-    shp[0][0] = -L00oneMinuseta - L01oneMinusxi;	// N_1,1
-    shp[0][1] =  L00oneMinuseta - L01onePlusxi;		// N_2,1
-    shp[0][2] =  L00onePluseta  + L01onePlusxi;		// N_3,1
-    shp[0][3] = -L00onePluseta  + L01oneMinusxi;	// N_4,1
-	
-    shp[1][0] = -L10oneMinuseta - L11oneMinusxi;	// N_1,2
-    shp[1][1] =  L10oneMinuseta - L11onePlusxi;		// N_2,2
-    shp[1][2] =  L10onePluseta  + L11onePlusxi;		// N_3,2
-    shp[1][3] = -L10onePluseta  + L11oneMinusxi;	// N_4,2
+    shp[1][0] = 0;	        // N_1,2
+    shp[1][1] = 0;		    // N_2,2
 
     return detJ;
 }
