@@ -27,7 +27,7 @@
 
 Vector ExponentialTS2D::stress(2);
 Matrix ExponentialTS2D::tangent(2,2);
-Vector ExponentialTS2D::state(4);
+Vector ExponentialTS2D::state(1);
 
 ExponentialTS2D::ExponentialTS2D
 (int tag, double d1, double d2, double s1, double s2, double b) :
@@ -101,7 +101,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     // effective displacement check
     double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
     
-    if (deleff > delmax) {
+    if (deleff >= delmax) {
         // loading condition
         Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
         Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
@@ -110,19 +110,28 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     } else {
         // unloading or reloading
         double ct = delmax/deleff;
+        double tsigt, tsign;
         double tETt, tETn, tENt, tENn;
-        Shear_Envlp(strain(0)*ct,strain(1)*ct,sigt,tETt,tETn);
-        Normal_Envlp(strain(0)*ct,strain(1)*ct,sign,tENt,tENn);
+        Shear_Envlp(strain(0)*ct,strain(1)*ct,tsigt,tETt,tETn);
+        Normal_Envlp(strain(0)*ct,strain(1)*ct,tsign,tENt,tENn);
         
-        // factors added to tangent
+        // factors added to tangent, using old way
         ETt = beta*beta*strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - beta*beta*strain(0)*strain(1)/deleff/deleff*tETn;
         ETn = strain(1)/delmax/deleff*sigt + beta*beta*strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
         ENt = beta*beta*strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - beta*beta*strain(0)*strain(1)/deleff/deleff*tENn;
         ENn = strain(1)/delmax/deleff*sign + beta*beta*strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
         
+        // factors added to tangent, using old way
+        double deffdn = strain(1)/deleff;
+        double deffdt = strain(0)*beta*beta/deleff;
+        ETt = 1/delmax*(deffdt*tsigt + deleff*tETt);
+        ETn = 1/delmax*(deffdn*tsigt + deleff*tETn);
+        ENt = 1/delmax*(deffdt*tsign + deleff*tENt);
+        ENn = 1/delmax*(deffdn*tsign + deleff*tENn);
+        
         // correct above stress values
-        sigt = sigt/ct;
-        sign = sign/ct;
+        sigt = tsigt/ct;
+        sign = tsign/ct;
     }
     
     // store in vector and matrix form from above
@@ -202,9 +211,8 @@ ExponentialTS2D::getStrain (void)
 const Vector&
 ExponentialTS2D::getState (void)
 {
-    double pi = acos(-1.0);
-    
-    // NYI
+    // store quantities in output vector
+    state(0) = delmax;
     
     return state;
 }

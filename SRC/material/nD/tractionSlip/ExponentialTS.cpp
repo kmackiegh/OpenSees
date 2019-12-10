@@ -51,7 +51,7 @@ OPS_NewExponentialTS(void)
     int numArgs = OPS_GetNumRemainingInputArgs();
 
     if (numArgs < 6) {
-        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max beta" << endln;
+        opserr << "Want: nDMaterial ExponentialTS $tag $delt $deln $tau_max $sig_max $beta" << endln;
         return 0;
     }
 
@@ -278,9 +278,9 @@ ExponentialTS::setResponse (const char **argv, int argc, OPS_Stream &output)
     
 	if (strcmp(argv[0],"stress") == 0 || strcmp(argv[0],"stresses") == 0)
 		return new MaterialResponse(this, 1, this->getStress());
-	else if (strcmp(argv[0],"strain") == 0 || strcmp(argv[0],"strains") == 0)
+	else if (strcmp(argv[0],"slip") == 0 || strcmp(argv[0],"deformation") == 0)
 		return new MaterialResponse(this, 2, this->getStrain());
-	else if (strcmp(argv[0], "state") == 0)
+	else if (strcmp(argv[0],"state") == 0)
 		return new MaterialResponse(this, 3, this->getState());
 	else
 		return 0;
@@ -380,11 +380,10 @@ ExponentialTS::Shear_Envlp (double Delt, double Deln,
     
     double e1 = exp(-Delnbar);
     double e2 = exp(-Deltbar*Deltbar);
-    double delbar = deln/delt * Delt/Deln;
     
     Tt = 2*phit/delt * Deltbar*(1+Delnbar) * e1 * e2;
-    ETn = 2*delbar*phit/deln/delt * e1*e2 * ( (1+Delnbar)*(1-2*Deltbar*Deltbar-Delnbar) + delbar*Delnbar );
-    ETt = 2*phit/delt/delt * e1*e2 * ( (1+Delnbar)*(1-2*Deltbar*Deltbar-Delnbar) + Deltbar );
+    ETn = -2*phit/deln/delt * e1*e2 * Delnbar*Deltbar;
+    ETt = 2*phit/delt/delt * e1*e2 * (1+Delnbar)*(1-2*Deltbar*Deltbar);
     
     return;
 }
@@ -402,11 +401,10 @@ ExponentialTS::Normal_Envlp (double Delt, double Deln,
     
     double e1 = exp(-Delnbar);
     double e2 = exp(-Deltbar*Deltbar);
-    double delbar = deln/delt * Delt/Deln;
     
-    Tn = phin/deln * e1 * e2;
-    ENn = phin/deln/deln * e1*e2 * ( 1-Delnbar*(1+2*Deltbar*delbar) );
-    ENt = phin/deln/delt * e1*e2 * ( 1-Delnbar*(1+2*Deltbar*delbar) ) / delbar;
+    Tn = phin/deln * Delnbar * e1 * e2;
+    ENn = phin/deln/deln * e1*e2 * (1-Delnbar);
+    ENt = -2*phin/deln/delt * e1*e2 * Delnbar*Deltbar;
     
     return;
 }

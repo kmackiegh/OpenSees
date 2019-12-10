@@ -128,7 +128,6 @@ void* OPS_InerterElement()
     return theEle;
 }
 
-
 //  Constructor
 InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
             int iType, double Cin,
@@ -155,7 +154,6 @@ InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
     
 }
 
-
 //   Constructor:
 //   invoked by a FEM_ObjectBroker - blank object that recvSelf needs
 //   to be invoked upon
@@ -172,9 +170,6 @@ InerterElement::InerterElement(void)
     
 }
 
-
-//  Destructor:
-//  delete must be invoked on any objects created by the object
 InerterElement::~InerterElement()
 {
     // invoke the destructor on any objects created by the object
@@ -186,13 +181,11 @@ InerterElement::~InerterElement()
     
 }
 
-
 int
 InerterElement::getNumExternalNodes(void) const
 {
     return 2;
 }
-
 
 const ID &
 InerterElement::getExternalNodes(void)
@@ -200,20 +193,17 @@ InerterElement::getExternalNodes(void)
     return connectedExternalNodes;
 }
 
-
 Node **
 InerterElement::getNodePtrs(void)
 {
   return theNodes;
 }
 
-
 int
 InerterElement::getNumDOF(void)
 {
     return numDOF;
 }
-
 
 // method: setDomain()
 //    to set a link to the enclosing Domain and to set the node pointers.
@@ -305,13 +295,12 @@ InerterElement::setDomain(Domain *theDomain)
     // create the basic deformation-displacement transformation matrix for the element
     this->setTran1d( elemType );
    
-}   	 
-
+}
 
 int
 InerterElement::commitState()
 {
-    int code=0;
+    int code = 0;
 
     // call element commitState to do any base class stuff
     if ((code = this->Element::commitState()) != 0) {
@@ -324,19 +313,17 @@ InerterElement::commitState()
 int
 InerterElement::revertToLastCommit()
 {
-    int code=0;
+    int code = 0;
     return code;
 }
-
 
 int
 InerterElement::revertToStart()
 {
     Tstress->Zero();
-    int code=0;
+    int code = 0;
     return code;
 }
-
 
 int
 InerterElement::update(void)
@@ -367,11 +354,12 @@ InerterElement::update(void)
         // set trial curd, curv, cura on element
         if (mat == 0) {
             if (inerterType == 1) {
-                if (fabs(curv) > 1.0e-9)
-                    (*Tstress)(mat) = C*cura;
+                //if (fabs(curv) > 1.0e-9)
+                    //(*Tstress)(mat) = C*cura;
+                (*Tstress)(mat) = C*cura;
                 
             } else if (inerterType == 2) {
-                if (cura/curv > 0)
+                if (cura/curv >= 0)
                     (*Tstress)(mat) = C*cura;
                 
             }
@@ -413,7 +401,6 @@ InerterElement::getTangentStiff(void)
     return stiff;
 }
 
-
 const Matrix &
 InerterElement::getInitialStiff(void)
 {
@@ -445,7 +432,6 @@ InerterElement::getInitialStiff(void)
 
     return stiff;
 }
-    
 
 const Matrix &
 InerterElement::getDamp(void)
@@ -477,6 +463,8 @@ InerterElement::getDamp(void)
                 else if (inerterType == 2 && fabs( (*Tstress)(mat) ) > 1.0e-9 )
                     eta = C/ops_Dt;
             }
+            // just make them all zero for now
+            eta = 0;
 
             // compute contribution of material to tangent matrix
             for (int i=0; i<numDOF; i++)
@@ -494,7 +482,6 @@ InerterElement::getDamp(void)
     return damp;
 }
 
-
 const Matrix &
 InerterElement::getMass(void)
 {
@@ -503,13 +490,11 @@ InerterElement::getMass(void)
     return *theMatrix;
 }
 
-
 void 
 InerterElement::zeroLoad(void)
 {
     // does nothing now
 }
-
 
 int 
 InerterElement::addLoad(ElementalLoad *theLoad, double loadFactor)
@@ -518,14 +503,12 @@ InerterElement::addLoad(ElementalLoad *theLoad, double loadFactor)
     return -1;
 }
 
-
 int 
 InerterElement::addInertiaLoadToUnbalance(const Vector &accel)
 {
     // does nothing as element has no mass yet!
     return 0;
 }
-
 
 const Vector &
 InerterElement::getResistingForce()
@@ -550,7 +533,6 @@ InerterElement::getResistingForce()
     return *theVector;
 }
 
-
 const Vector &
 InerterElement::getResistingForceIncInertia()
 {	
@@ -566,7 +548,6 @@ InerterElement::getResistingForceIncInertia()
 
     return *theVector;
 }
-
 
 int
 InerterElement::sendSelf(int commitTag, Channel &theChannel)
@@ -611,7 +592,6 @@ InerterElement::sendSelf(int commitTag, Channel &theChannel)
 	return res;
 }
 
-
 int
 InerterElement::recvSelf(int commitTag, Channel &theChannel, FEM_ObjectBroker &theBroker)
 {
@@ -648,7 +628,6 @@ InerterElement::recvSelf(int commitTag, Channel &theChannel, FEM_ObjectBroker &t
     return res;
 }
 
-
 int
 InerterElement::displaySelf(Renderer &theViewer, int displayMode, float fact, const char **modes, int numMode)
 {
@@ -677,7 +656,6 @@ InerterElement::displaySelf(Renderer &theViewer, int displayMode, float fact, co
     else
       return theViewer.drawPoint(v1, d1, 10);	
 }
-
 
 void
 InerterElement::Print(OPS_Stream &s, int flag)
@@ -853,9 +831,7 @@ InerterElement::setParameter(const char **argv, int argc, Parameter &param)
   return result;
 }
 
-
 // Establish the external nodes and set up the transformation matrix
-// for orientation
 void
 InerterElement::setUp( int Nd1, int Nd2,
 		   const Vector &x,
@@ -906,7 +882,6 @@ InerterElement::setUp( int Nd1, int Nd2,
     }
 
 }
-
 
 // Set basic deformation-displacement transformation matrix
 void
@@ -985,7 +960,6 @@ InerterElement::setTran1d(Etype elemType)
     } // end loop over dofs
 }
 		     
-
 // Compute current strain for 1d material mat
 // dispDiff are the displacements of node 2 minus those of node 1
 double
@@ -1000,7 +974,6 @@ InerterElement::computeCurrentStrain1d( int mat,
 
     return strain;
 }
-
 
 void
 InerterElement::updateDir(const Vector& x, const Vector& y)
