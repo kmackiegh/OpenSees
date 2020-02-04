@@ -17,12 +17,7 @@
 **   Filip C. Filippou (filippou@ce.berkeley.edu)                     **
 **                                                                    **
 ** ****************************************************************** */
-                                                                        
-// $Revision: 1.13 $
-// $Date: 2006-09-05 21:21:52 $
-// $Source: /usr/local/cvs/OpenSees/SRC/material/nD/ExponentialTS.h,v $
-                                                                        
-                                                                        
+                                                                
 #ifndef ExponentialTS_h
 #define ExponentialTS_h
 
@@ -37,11 +32,11 @@ class ExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ExponentialTS (int tag, int classTag,
-                   double d1, double d2, double s1, double s2, double b);
+                   double d1, double d2, double s1, double s2, double l, double b);
 
     // Called by clients
     ExponentialTS (int tag,
-                   double d1, double d2, double s1, double s2, double b);
+                   double d1, double d2, double s1, double s2, double l, double b);
 
     // For parallel processing
     ExponentialTS (void);
@@ -96,6 +91,7 @@ class ExponentialTS : public NDMaterial
     double deln;
     double tau_max;
     double sig_max;
+    double lambda;
     double beta;
     // derived
     double phit;

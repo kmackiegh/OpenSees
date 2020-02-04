@@ -47,7 +47,7 @@ class CohesiveZoneQuad : public Element
 {
   public:
     CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
-		 NDMaterial &m, double t, const Vector vin = 0);
+		 NDMaterial &m, double t, int it, const Vector vin = 0);
     CohesiveZoneQuad();
     ~CohesiveZoneQuad();
 

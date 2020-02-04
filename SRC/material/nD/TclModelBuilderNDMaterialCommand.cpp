@@ -98,6 +98,7 @@ extern  void *OPS_ElasticOrthotropicMaterial(void);
 extern  void *OPS_NewLowTensionMaterial(void);
 extern  void *OPS_NewExponentialTS(void);
 extern  void *OPS_NewElasticTS(void);
+extern  void *OPS_NewBilinearTS(void);
 extern  void *OPS_DruckerPragerMaterial(void);
 extern  void *OPS_BoundingCamClayMaterial(void);
 extern  void *OPS_ContactMaterial2DMaterial(void);
@@ -558,7 +559,6 @@ TclModelBuilderNDMaterialCommand (ClientData clientData, Tcl_Interp *interp, int
     }
     
     else if (strcmp(argv[1],"LowTension") == 0) {
-        
         void *theMat = OPS_NewLowTensionMaterial();
         if (theMat != 0)
             theMaterial = (NDMaterial *)theMat;
@@ -567,7 +567,6 @@ TclModelBuilderNDMaterialCommand (ClientData clientData, Tcl_Interp *interp, int
     }
     
     else if (strcmp(argv[1],"ExponentialTS") == 0) {
-        
         void *theMat = OPS_NewExponentialTS();
         if (theMat != 0)
             theMaterial = (NDMaterial *)theMat;
@@ -576,8 +575,15 @@ TclModelBuilderNDMaterialCommand (ClientData clientData, Tcl_Interp *interp, int
     }
     
     else if (strcmp(argv[1],"ElasticTS") == 0) {
-        
         void *theMat = OPS_NewElasticTS();
+        if (theMat != 0)
+            theMaterial = (NDMaterial *)theMat;
+        else
+            return TCL_ERROR;
+    }
+    
+    else if (strcmp(argv[1],"BilinearTS") == 0) {
+        void *theMat = OPS_NewBilinearTS();
         if (theMat != 0)
             theMaterial = (NDMaterial *)theMat;
         else

@@ -17,10 +17,6 @@
 **   Filip C. Filippou (filippou@ce.berkeley.edu)                     **
 **                                                                    **
 ** ****************************************************************** */
-                                                                        
-// $Revision: 1.6 $
-// $Date: 2006-08-04 18:18:37 $
-// $Source: /usr/local/cvs/OpenSees/SRC/material/nD/ElasticOrthotropicPlaneStress2D.h,v $
 
 #ifndef ExponentialTS2D_h
 #define ExponentialTS2D_h
@@ -41,7 +37,7 @@
 class ExponentialTS2D : public ExponentialTS
 {
   public:
-    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double b);
+    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double l, double b);
     ExponentialTS2D();
     ~ExponentialTS2D();
 

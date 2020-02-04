@@ -381,6 +381,8 @@
 #define ND_TAG_ExponentialTS2D 68
 #define ND_TAG_ElasticTS 69
 #define ND_TAG_ElasticTS2D 70
+#define ND_TAG_BilinearTS 71
+#define ND_TAG_BilinearTS2D 72
 
 #define ND_TAG_FluidSolidPorousMaterial        100
 #define ND_TAG_PressureDependMultiYield		101

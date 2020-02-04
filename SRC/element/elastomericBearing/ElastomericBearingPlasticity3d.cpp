@@ -35,6 +35,7 @@
 #include <Information.h>
 #include <ElementResponse.h>
 #include <UniaxialMaterial.h>
+#include <Parameter.h>
 
 #include <float.h>
 #include <math.h>
@@ -1117,6 +1118,53 @@ int ElastomericBearingPlasticity3d::getResponse(int responseID, Information &ele
         
     default:
         return -1;
+    }
+}
+
+
+int ElastomericBearingPlasticity3d::setParameter(const char **argv, int argc, Parameter &param)
+{
+    int result = -1;
+
+    if (argc < 1)
+        return -1;
+
+    // lateral stiffness
+    if (strcmp(argv[0],"k0") == 0) {
+      param.setValue(k0);
+      return param.addObject(1, this);
+    }
+    // lateral strength
+    if (strcmp(argv[0],"qd") == 0) {
+      param.setValue(qYield);
+      return param.addObject(2, this);
+    }
+    // otherwise see if it's a material parameter
+    if (strcmp(argv[0], "material") == 0) {
+        if (argc > 2) {
+            int matNum = atoi(argv[1]);
+            if (matNum >= 1 && matNum <= 4)
+                return theMaterials[matNum-1]->setParameter(&argv[2], argc-2, param);
+        } else {
+            return -1;
+        }
+    }
+
+    return result;
+}
+
+
+int ElastomericBearingPlasticity3d::updateParameter (int parameterID, Information &info)
+{
+    switch (parameterID) {
+        case 1:
+            k0 = info.theDouble;
+            return 0;
+        case 2:
+            qYield = info.theDouble;
+            return 0;
+        default:
+            return -1;
     }
 }
 
