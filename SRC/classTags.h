@@ -742,9 +742,12 @@
 #define ELE_TAG_PFEMElement3DBubble       189
 #define ELE_TAG_LinearElasticSpring       190
 #define ELE_TAG_Inerter                   191
-#define ELE_TAG_ComponentElement2d        192
-#define ELE_TAG_CohesiveZoneQuad          193
+#define ELE_TAG_GradientInelasticBeamColumn2d	192
+#define ELE_TAG_GradientInelasticBeamColumn3d	193
+#define ELE_TAG_CohesiveZoneQuad          220
 #define ELE_TAG_ExternalElement           99990  
+
+
 
 #define FRN_TAG_Coulomb            1
 #define FRN_TAG_VelDependent       2
