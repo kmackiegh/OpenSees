@@ -744,7 +744,9 @@
 #define ELE_TAG_Inerter                   191
 #define ELE_TAG_GradientInelasticBeamColumn2d	192
 #define ELE_TAG_GradientInelasticBeamColumn3d	193
-#define ELE_TAG_CohesiveZoneQuad          220
+#define ELE_TAG_CohesiveZoneQuad 194
+#define ELE_TAG_ComponentElement2d       195
+#define ELE_TAG_InerterElement 196
 #define ELE_TAG_ExternalElement           99990  
 
 
