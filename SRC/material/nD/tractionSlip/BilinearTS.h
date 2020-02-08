@@ -17,9 +17,9 @@
 **   Filip C. Filippou (filippou@ce.berkeley.edu)                     **
 **                                                                    **
 ** ****************************************************************** */
-                                                              
-#ifndef ElasticTS_h
-#define ElasticTS_h
+                                            
+#ifndef BilinearTS_h
+#define BilinearTS_h
 
 #include <NDMaterial.h>
 
@@ -27,23 +27,23 @@
 #include <Vector.h>
 #include <ID.h>
 
-class ElasticTS : public NDMaterial
+class BilinearTS : public NDMaterial
 {
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
-    ElasticTS (int tag, int classTag,
-               double d1, double d2, double s1, double s2, double cm);
+    BilinearTS (int tag, int classTag,
+                   double dc, double sc, double lc, double cm);
 
     // Called by clients
-    ElasticTS (int tag,
-               double d1, double d2, double s1, double s2, double cm);
+    BilinearTS (int tag,
+                   double dc, double sc, double lc, double cm);
 
     // For parallel processing
-    ElasticTS (void);
+    BilinearTS (void);
 
-    virtual ~ElasticTS (void);
+    virtual ~BilinearTS (void);
 
-    virtual const char *getClassType(void) const {return "ElasticTS";};
+    virtual const char *getClassType(void) const {return "BilinearTS";};
 
     virtual double getRho( ) ;
 
@@ -87,14 +87,13 @@ class ElasticTS : public NDMaterial
     
   protected:
     // passed as arguments
-    double delt;
-    double deln;
-    double tau_max;
-    double sig_max;
+    double delc;
+    double sigc;
+    double lamcr;
     double cmult;
     // derived
-    double kit;
-    double kin;
+    double phit;
+    double phin;
     
   private:
 

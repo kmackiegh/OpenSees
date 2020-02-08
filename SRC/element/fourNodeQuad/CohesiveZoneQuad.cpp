@@ -54,9 +54,9 @@ void* OPS_CohesiveZoneQuad()
         return 0;
     }
     
-    if (OPS_GetNumRemainingInputArgs() < 7) {
+    if (OPS_GetNumRemainingInputArgs() < 8) {
         opserr << "WARNING insufficient arguments\n";
-        opserr << "Want: element CohesiveZoneQuad eleTag? iNode? jNode? kNode? lNode? thk? matTag? <-vecn n1? n2? n3?>\n";
+        opserr << "Want: element CohesiveZoneQuad eleTag? iNode? jNode? kNode? lNode? thk? matTag? intType? <-vecn n1? n2? n3?>\n";
         return 0;
     }
 
@@ -64,14 +64,14 @@ void* OPS_CohesiveZoneQuad()
     int idata[5];
     int num = 5;
     if (OPS_GetIntInput(&num,idata) < 0) {
-        opserr<<"WARNING: invalid integer inputs\n";
+        opserr << "WARNING: invalid integer inputs\n";
         return 0;
     }
 
     double thk = 1.0;
     num = 1;
     if (OPS_GetDoubleInput(&num,&thk) < 0) {
-        opserr<<"WARNING: invalid double inputs\n";
+        opserr << "WARNING: invalid double inputs\n";
         return 0;
     }
 
@@ -79,7 +79,7 @@ void* OPS_CohesiveZoneQuad()
     int matTag;
     num = 1;
     if (OPS_GetIntInput(&num,&matTag) < 0) {
-        opserr<<"WARNING: invalid matTag\n";
+        opserr << "WARNING: invalid matTag\n";
         return 0;
     }
 
@@ -88,6 +88,20 @@ void* OPS_CohesiveZoneQuad()
         opserr << "WARNING material not found\n";
         opserr << "Material: " << matTag;
         opserr << "\nCohesiveZoneQuad element: " << idata[0] << endln;
+        return 0;
+    }
+    
+    // get integration type and check range
+    int integType;
+    num = 1;
+    if (OPS_GetIntInput(&num,&integType) < 0) {
+        opserr << "WARNING: invalid intType\n";
+        return 0;
+    }
+    
+    if (integType < 1 || integType > 3) {
+        opserr << "WARNING intType must be between 1 and 3";
+        opserr << " for CohesiveZoneQuad element: " << idata[0] << endln;
         return 0;
     }
     
@@ -116,7 +130,7 @@ void* OPS_CohesiveZoneQuad()
 
     // create element
     return new CohesiveZoneQuad(idata[0],idata[1],idata[2],idata[3],idata[4],
-			                *mat,thk,vecn);
+			                *mat,thk,integType,vecn);
 }
 
 
@@ -128,7 +142,7 @@ double CohesiveZoneQuad::wts[2];
 
 
 CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
-			   NDMaterial &m, double t, const Vector _vec)
+			   NDMaterial &m, double t, int it, const Vector _vec)
 :Element (tag, ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
  Q(8), thickness(t), vecn(_vec), ae(4,8), Ki(0)
@@ -139,10 +153,25 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
         indx[i] = i;
     
     // integration scheme
-	pts[0] = -0.5773502691896258;
-	pts[1] =  0.5773502691896258;
-	wts[0] = 1.0;
-    wts[1] = 1.0;
+    if (it == 1) {
+        // Gauss
+        pts[0] = -0.5773502691896258;
+        pts[1] =  0.5773502691896258;
+        wts[0] = 1.0;
+        wts[1] = 1.0;
+    } else if (it == 2) {
+        // Lobatto or Newton-Cotes
+        pts[0] = -1.0;
+        pts[1] =  1.0;
+        wts[0] = 1.0;
+        wts[1] = 1.0;
+    } else if (it == 3) {
+        // Chebyshev NYI ----------------
+        pts[0] = -0.5773502691896258;
+        pts[1] =  0.5773502691896258;
+        wts[0] = 1.0;
+        wts[1] = 1.0;
+    }
 
     // Allocate arrays of pointers to NDMaterials
     theMaterial = new NDMaterial *[2];
@@ -178,7 +207,7 @@ CohesiveZoneQuad::CohesiveZoneQuad()
   theMaterial(0), connectedExternalNodes(4), 
  Q(8), thickness(0.0), vecn(0), ae(4,8), Ki(0)
 {
-    // integration scheme
+    // integration scheme defaults to Gauss, this may be able to initialize to zero
     pts[0] = -0.5773502691896258;
     pts[1] =  0.5773502691896258;
     wts[0] = 1.0;

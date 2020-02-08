@@ -22,14 +22,14 @@
 // Created: Aug 2019
 // Revision: A
 //
-// Description: This file contains the class implementation for ElasticTS.
+// Description: This file contains the class implementation for BilinearTS.
 //
-// What: "@(#) ElasticTS.C, revA"
+// What: "@(#) BilinearTS.C, revA"
 
 #include <string.h>
 
-#include <ElasticTS.h>
-#include <ElasticTS2D.h>
+#include <BilinearTS.h>
+#include <BilinearTS2D.h>
 
 #include <Channel.h>
 #include <Information.h>
@@ -44,97 +44,91 @@
 
 
 void *
-OPS_NewElasticTS(void)
+OPS_NewBilinearTS(void)
 {
     NDMaterial *theMaterial = 0;
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 5) {
-        opserr << "Want: nDMaterial ElasticTS tag? delt? deln? tau_max? sig_max? <cmult?>" << endln;
+    if (numArgs < 4) {
+        opserr << "Want: nDMaterial BilinearTS tag? delc? sigc? lamcr? <cmult?>" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[4];
+    double dData[3];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
-        opserr << "WARNING invalid integer tag: nDMaterial ElasticTS \n";
+        opserr << "WARNING invalid integer tag: nDMaterial BilinearTS \n";
         return 0;
     }
 
-    numData = 4;
+    numData = 3;
     if (OPS_GetDouble(&numData, dData) != 0) {
-        opserr << "WARNING invalid data: nDMaterial ElasticTS: " << dData[0] <<"\n";
+        opserr << "WARNING invalid data: nDMaterial BilinearTS: " << iData[0] <<"\n";
         return 0;
     }
     
     double cmult = 1.0;
     numData = 1;
-    if (numArgs == 6) {
+    if (numArgs == 5) {
         if (OPS_GetDouble(&numData, &cmult) != 0) {
-            opserr << "WARNING invalid cmult: nDMaterial ElasticTS: " << cmult <<"\n";
+            opserr << "WARNING invalid cmult: nDMaterial BilinearTS: " << cmult <<"\n";
             return 0;
         }
     }
 
-    theMaterial = new ElasticTS(iData[0], dData[0], dData[1], dData[2], dData[3], cmult);
+    theMaterial = new BilinearTS(iData[0], dData[0], dData[1], dData[2], cmult);
 
     return theMaterial;
 }
 
 
 
-ElasticTS::ElasticTS
-(int tag, int classTag, double d1, double d2, double s1, double s2, double cm)
+BilinearTS::BilinearTS
+(int tag, int classTag, double dc, double sc, double lc, double cm)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), cmult(cm)
+delc(dc), sigc(sc), lamcr(lc), cmult(cm)
 {
     // do some input checks
-    if (delt < 0)
-        delt = fabs(delt);
-    if (deln < 0)
-        deln = fabs(deln);
-    if (tau_max < 0)
-        tau_max = fabs(tau_max);
-    if (sig_max < 0)
-        sig_max = fabs(sig_max);
+    if (delc < 0)
+        delc = fabs(delc);
+    if (sigc < 0)
+        sigc = fabs(sigc);
+    if (lamcr < 0 || lamcr > 1)
+        lamcr = 0.5;
     if (cmult <= 0)
         cmult = 1.0;
     
     // derived properties
-    kit = tau_max/delt;
-    kin = sig_max/deln;
 }
 
-ElasticTS::ElasticTS
-(int tag, double d1, double d2, double s1, double s2, double cm)
-  :NDMaterial(tag, ND_TAG_ElasticTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), cmult(cm)
+BilinearTS::BilinearTS
+(int tag, double dc, double sc, double lc, double cm)
+  :NDMaterial(tag, ND_TAG_BilinearTS),
+delc(dc), sigc(sc), lamcr(lc), cmult(cm)
 {
     // derived properties
-    kit = tau_max/delt;
-    kin = sig_max/deln;
 }
 
-ElasticTS::~ElasticTS()
+BilinearTS::~BilinearTS()
 {
 	
 }
 
 double
-ElasticTS::getRho()
+BilinearTS::getRho()
 { 
     return 0;
 }
 
 NDMaterial*
-ElasticTS::getCopy (const char *type)
+BilinearTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
-        ElasticTS2D *theModel;
-        theModel = new ElasticTS2D (this->getTag(), delt, deln, tau_max, sig_max, cmult);
+        BilinearTS2D *theModel;
+        theModel = new BilinearTS2D (this->getTag(), delc, sigc, lamcr, cmult);
 
         return theModel;
     }
@@ -145,41 +139,41 @@ ElasticTS::getCopy (const char *type)
 }
 
 int
-ElasticTS::setTrialStrain (const Vector &v)
+BilinearTS::setTrialStrain (const Vector &v)
 {
-    opserr << "ElasticTS::setTrialStrain -- subclass responsibility\n";
+    opserr << "BilinearTS::setTrialStrain -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 int
-ElasticTS::setTrialStrain (const Vector &v, const Vector &rate)
+BilinearTS::setTrialStrain (const Vector &v, const Vector &rate)
 {
-    opserr << "ElasticTS::setTrialStrain -- subclass responsibility\n";
+    opserr << "BilinearTS::setTrialStrain -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 int
-ElasticTS::setTrialStrainIncr (const Vector &v)
+BilinearTS::setTrialStrainIncr (const Vector &v)
 {
-    opserr << "ElasticTS::setTrialStrainIncr -- subclass responsibility\n";
+    opserr << "BilinearTS::setTrialStrainIncr -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 int
-ElasticTS::setTrialStrainIncr (const Vector &v, const Vector &rate)
+BilinearTS::setTrialStrainIncr (const Vector &v, const Vector &rate)
 {
-    opserr << "ElasticTS::setTrialStrainIncr -- subclass responsibility\n";
+    opserr << "BilinearTS::setTrialStrainIncr -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 const Matrix&
-ElasticTS::getTangent (void)
+BilinearTS::getTangent (void)
 {
-    opserr << "ElasticTS::getTangent -- subclass responsibility\n";
+    opserr << "BilinearTS::getTangent -- subclass responsibility\n";
     exit(-1);
 
     // Just to make it compile
@@ -188,15 +182,15 @@ ElasticTS::getTangent (void)
 }
 
 const Matrix&
-ElasticTS::getInitialTangent (void)
+BilinearTS::getInitialTangent (void)
 {
     return this->getTangent();
 }
 
 const Vector&
-ElasticTS::getStress (void)
+BilinearTS::getStress (void)
 {
-    opserr << "ElasticTS::getStress -- subclass responsibility\n";
+    opserr << "BilinearTS::getStress -- subclass responsibility\n";
     exit(-1);
 
     // Just to make it compile
@@ -205,9 +199,9 @@ ElasticTS::getStress (void)
 }
 
 const Vector&
-ElasticTS::getStrain (void)
+BilinearTS::getStrain (void)
 {
-    opserr << "ElasticTS::getStrain -- subclass responsibility\n";
+    opserr << "BilinearTS::getStrain -- subclass responsibility\n";
     exit(-1);
 
     // Just to make it compile
@@ -216,9 +210,9 @@ ElasticTS::getStrain (void)
 }
 
 const Vector&
-ElasticTS::getState (void)
+BilinearTS::getState (void)
 {
-    opserr << "ElasticTS::getState -- subclass responsibility\n";
+    opserr << "BilinearTS::getState -- subclass responsibility\n";
     exit(-1);
     
     // Just to make it compile
@@ -227,57 +221,57 @@ ElasticTS::getState (void)
 }
 
 int
-ElasticTS::commitState (void)
+BilinearTS::commitState (void)
 {
-    opserr << "ElasticTS::commitState -- subclass responsibility\n";
+    opserr << "BilinearTS::commitState -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 int
-ElasticTS::revertToLastCommit (void)
+BilinearTS::revertToLastCommit (void)
 {
-    opserr << "ElasticTS::revertToLastCommit -- subclass responsibility\n";
+    opserr << "BilinearTS::revertToLastCommit -- subclass responsibility\n";
     exit(-1);
 
     return -1;
 }
 
 int
-ElasticTS::revertToStart (void)
+BilinearTS::revertToStart (void)
 {
-    opserr << "ElasticTS::revertToStart -- subclass responsibility\n";
+    opserr << "BilinearTS::revertToStart -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 NDMaterial*
-ElasticTS::getCopy (void)
+BilinearTS::getCopy (void)
 {
-    opserr << "ElasticTS::getCopy -- subclass responsibility\n";
+    opserr << "BilinearTS::getCopy -- subclass responsibility\n";
     exit(-1);
     return 0;
 }
 
 const char*
-ElasticTS::getType (void) const
+BilinearTS::getType (void) const
 {
-    opserr << "ElasticTS::getType -- subclass responsibility\n";
+    opserr << "BilinearTS::getType -- subclass responsibility\n";
     exit(-1);
 
     return 0;
 }
 
 int
-ElasticTS::getOrder (void) const
+BilinearTS::getOrder (void) const
 {
-    opserr << "ElasticTS::getOrder -- subclass responsibility\n";
+    opserr << "BilinearTS::getOrder -- subclass responsibility\n";
     exit(-1);
     return -1;
 }
 
 Response*
-ElasticTS::setResponse (const char **argv, int argc, OPS_Stream &output)
+BilinearTS::setResponse (const char **argv, int argc, OPS_Stream &output)
 {
 	const char *matType = this->getType();
     
@@ -295,7 +289,7 @@ ElasticTS::setResponse (const char **argv, int argc, OPS_Stream &output)
 		return 0;
 }
 
-int ElasticTS::getResponse (int responseID, Information &matInfo)
+int BilinearTS::getResponse (int responseID, Information &matInfo)
 {
 	switch (responseID) {
 		case -1:
@@ -318,21 +312,21 @@ int ElasticTS::getResponse (int responseID, Information &matInfo)
 }
 
 int
-ElasticTS::sendSelf (int commitTag, Channel &theChannel)
+BilinearTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
     static Vector data(5);
 
     data(0) = this->getTag();
-    data(1) = delt;
-    data(2) = deln;
-    data(3) = tau_max;
-    data(4) = sig_max;
+    data(1) = delc;
+    data(2) = sigc;
+    data(3) = lamcr;
+    data(4) = cmult;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ElasticTS::sendSelf -- could not send Vector\n";
+        opserr << "BilinearTS::sendSelf -- could not send Vector\n";
         return res;
     }
 
@@ -340,7 +334,7 @@ ElasticTS::sendSelf (int commitTag, Channel &theChannel)
 }
 
 int
-ElasticTS::recvSelf (int commitTag, Channel &theChannel,
+BilinearTS::recvSelf (int commitTag, Channel &theChannel,
 				    FEM_ObjectBroker &theBroker)
 {
     int res = 0;
@@ -349,59 +343,80 @@ ElasticTS::recvSelf (int commitTag, Channel &theChannel,
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ElasticTS::recvSelf -- could not recv Vector\n";
+        opserr << "BilinearTS::recvSelf -- could not recv Vector\n";
         return res;
     }
 
     this->setTag((int)data(0));
-    delt = data(1);
-    deln = data(2);
-    tau_max = data(3);
-    sig_max = data(4);
+    delc = data(1);
+    sigc = data(2);
+    lamcr = data(3);
+    cmult = data(4);
     
     return res;
 }
 
 void
-ElasticTS::Print (OPS_Stream &s, int flag)
+BilinearTS::Print (OPS_Stream &s, int flag)
 {
-	s << "Elastic Traction Slip Material Model" << endln;
-	s << "\tdelt: " << delt << ", deln: " << deln << endln;
-    s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
-    s << "\tkit: " << kit << ", kin: " << kin << endln;
+	s << "Bilinear Traction Slip Material Model" << endln;
+	s << "\tdelc: " << delc << ", sigc: " << sigc << endln;
+    s << "\tlamcr: " << lamcr << endln;
 
 	return;
 }
 
 void
-ElasticTS::Shear_Envlp (double Delt, double Deln,
-                        double &Tt, double &ETt, double &ETn)
+BilinearTS::Shear_Envlp (double Delt, double Deln,
+                            double &Tt, double &ETt, double &ETn)
 {
     // shear monotonic envelope function
+    // unloading and reloading reflected elsewhere
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
-    Tt = kit*Delt;
-    ETn = 0;
-    ETt = kit;
+    double Deltbar = Delt/delc;
+    double Delnbar = Deln/delc;
+    double lameff = sqrt(Deltbar*Deltbar+Delnbar*Delnbar);
     
+    if (lameff <= lamcr) {
+        Tt = sigc/lamcr*Deltbar;
+        ETn = 0;
+        ETt = sigc/lamcr/delc;
+    } else {
+        Tt = sigc/lameff*Deltbar*(1-lameff)/(1-lamcr);
+        ETn = -delc*sigc/(1-lamcr)*Deltbar/delc/lameff*Delnbar/delc/lameff - (1-lameff)*delc*sigc/(1-lamcr)*Deltbar*Delnbar/delc/delc/pow(lameff,3);
+        ETt = -delc*sigc/(1-lamcr)*pow(Deltbar/delc/lameff,2) + (1-lameff)*delc*sigc/(1-lamcr)*(1/lameff/delc/delc - Deltbar*Deltbar/delc/delc/pow(lameff,3));
+    }
     return;
 }
 
 void
-ElasticTS::Normal_Envlp (double Delt, double Deln,
-                         double &Tn, double &ENt, double &ENn)
+BilinearTS::Normal_Envlp (double Delt, double Deln,
+                             double &Tn, double &ENt, double &ENn)
 {
     // shear monotonic envelope function
+    // unloading and reloading reflected elsewhere
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
+    double Deltbar = Delt/delc;
+    double Delnbar = Deln/delc;
+    double lameff = sqrt(Deltbar*Deltbar+Delnbar*Delnbar);
+    
+    if (lameff <= lamcr) {
+        Tn = sigc/lamcr*Delnbar;
+        ENn = 0;
+        ENt = sigc/lamcr/delc;
+    } else {
+        Tn = sigc/lameff*Delnbar*(1-lameff)/(1-lamcr);
+        ENn = -delc*sigc/(1-lamcr)*pow(Delnbar/delc/lameff,2) + (1-lameff)*delc*sigc/(1-lamcr)*(1/lameff/delc/delc - Delnbar*Delnbar/delc/delc/pow(lameff,3));
+        ENt = -delc*sigc/(1-lamcr)*Deltbar/delc/lameff*Delnbar/delc/lameff - (1-lameff)*delc*sigc/(1-lamcr)*Deltbar*Delnbar/delc/delc/pow(lameff,3);
+    }
+    
     // compression normal multiplier
+    // NYI for bilinear
     double cloc = 1.0;
     if (Deln < 0)
         cloc = cmult;
-    
-    Tn = (cloc*kin)*Deln;
-    ENn = cloc*kin;
-    ENt = 0;
     
     return;
 }

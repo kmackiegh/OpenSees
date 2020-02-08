@@ -18,43 +18,43 @@
 **                                                                    **
 ** ****************************************************************** */
                                                                         
-#include <ExponentialTS2D.h>
+#include <BilinearTS2D.h>
 #include <Channel.h>
 #include <Matrix.h>
 
 #include <math.h>
 #include <float.h>
 
-Vector ExponentialTS2D::stress(2);
-Matrix ExponentialTS2D::tangent(2,2);
-Vector ExponentialTS2D::state(1);
+Vector BilinearTS2D::stress(2);
+Matrix BilinearTS2D::tangent(2,2);
+Vector BilinearTS2D::state(1);
 
-ExponentialTS2D::ExponentialTS2D
-(int tag, double d1, double d2, double s1, double s2, double l, double b) :
- ExponentialTS (tag, ND_TAG_ExponentialTS2D,
-                d1, d2, s1, s2, l, b),
+BilinearTS2D::BilinearTS2D
+(int tag, double dc, double sc, double lc, double cm) :
+ BilinearTS (tag, ND_TAG_BilinearTS2D,
+                dc, sc, lc, cm),
  sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
 
-ExponentialTS2D::ExponentialTS2D():
- ExponentialTS (0, ND_TAG_ExponentialTS2D,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+BilinearTS2D::BilinearTS2D():
+ BilinearTS (0, ND_TAG_BilinearTS2D,
+                0.0, 0.0, 0.0, 0.0),
 sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
 
-ExponentialTS2D::~ExponentialTS2D ()
+BilinearTS2D::~BilinearTS2D ()
 {
 
 }
 
 int
-ExponentialTS2D::initialize(void)
+BilinearTS2D::initialize(void)
 {
     // initialize local storage
     sigma.Zero();
@@ -90,7 +90,7 @@ ExponentialTS2D::initialize(void)
 }
 
 int
-ExponentialTS2D::setTrialStrain (const Vector &strain)
+BilinearTS2D::setTrialStrain (const Vector &strain)
 {
     epsilon = strain;
     Vector deps = epsilon - Cepsilon;
@@ -99,7 +99,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     Tstress = Cstress + D*deps;
     
     // effective displacement check
-    double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
+    double deleff = sqrt(strain(0)*strain(0)+strain(1)*strain(1));
     
     if (deleff >= delmax) {
         // loading condition
@@ -116,14 +116,14 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
         Normal_Envlp(strain(0)*ct,strain(1)*ct,tsign,tENt,tENn);
         
         // factors added to tangent, using old way
-        ETt = beta*beta*strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - beta*beta*strain(0)*strain(1)/deleff/deleff*tETn;
-        ETn = strain(1)/delmax/deleff*sigt + beta*beta*strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
-        ENt = beta*beta*strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - beta*beta*strain(0)*strain(1)/deleff/deleff*tENn;
-        ENn = strain(1)/delmax/deleff*sign + beta*beta*strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
+        ETt = strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - strain(0)*strain(1)/deleff/deleff*tETn;
+        ETn = strain(1)/delmax/deleff*sigt + strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
+        ENt = strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - strain(0)*strain(1)/deleff/deleff*tENn;
+        ENn = strain(1)/delmax/deleff*sign + strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
         
         // factors added to tangent, using old way
         double deffdn = strain(1)/deleff;
-        double deffdt = strain(0)*beta*beta/deleff;
+        double deffdt = strain(0)/deleff;
         ETt = 1/delmax*(deffdt*tsigt + deleff*tETt);
         ETn = 1/delmax*(deffdn*tsigt + deleff*tETn);
         ENt = 1/delmax*(deffdt*tsign + deleff*tENt);
@@ -146,13 +146,13 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
 }
 
 int
-ExponentialTS2D::setTrialStrain (const Vector &strain, const Vector &rate)
+BilinearTS2D::setTrialStrain (const Vector &strain, const Vector &rate)
 {
     return this->setTrialStrain(strain) ;
 }
 
 int
-ExponentialTS2D::setTrialStrainIncr (const Vector &strain)
+BilinearTS2D::setTrialStrainIncr (const Vector &strain)
 {
     static Vector newStrain(2);
     newStrain = epsilon + strain;
@@ -161,20 +161,20 @@ ExponentialTS2D::setTrialStrainIncr (const Vector &strain)
 }
 
 int
-ExponentialTS2D::setTrialStrainIncr (const Vector &strain, const Vector &rate)
+BilinearTS2D::setTrialStrainIncr (const Vector &strain, const Vector &rate)
 {
     return this->setTrialStrainIncr(strain);
 }
 
 const Matrix&
-ExponentialTS2D::getTangent (void)
+BilinearTS2D::getTangent (void)
 {
     tangent = D;
     return tangent;
 }
 
 const Matrix&
-ExponentialTS2D::getInitialTangent (void)
+BilinearTS2D::getInitialTangent (void)
 {
     sigt = 0;
     sign = 0;
@@ -196,20 +196,20 @@ ExponentialTS2D::getInitialTangent (void)
 }
 
 const Vector&
-ExponentialTS2D::getStress (void)
+BilinearTS2D::getStress (void)
 {
     stress = sigma;
     return stress;
 }
 
 const Vector&
-ExponentialTS2D::getStrain (void)
+BilinearTS2D::getStrain (void)
 {
     return epsilon;
 }
 
 const Vector&
-ExponentialTS2D::getState (void)
+BilinearTS2D::getState (void)
 {
     // store quantities in output vector
     state(0) = delmax;
@@ -218,7 +218,7 @@ ExponentialTS2D::getState (void)
 }
 
 int
-ExponentialTS2D::commitState (void)
+BilinearTS2D::commitState (void)
 {
     Cepsilon = epsilon;
     Cstress = sigma;
@@ -227,7 +227,7 @@ ExponentialTS2D::commitState (void)
 }
 
 int
-ExponentialTS2D::revertToLastCommit (void)
+BilinearTS2D::revertToLastCommit (void)
 {
     epsilon = Cepsilon;
     sigma = Cstress;
@@ -236,7 +236,7 @@ ExponentialTS2D::revertToLastCommit (void)
 }
 
 int
-ExponentialTS2D::revertToStart (void)
+BilinearTS2D::revertToStart (void)
 {
     this->initialize();
     
@@ -244,10 +244,10 @@ ExponentialTS2D::revertToStart (void)
 }
 
 NDMaterial*
-ExponentialTS2D::getCopy (void)
+BilinearTS2D::getCopy (void)
 {
-    ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,beta);
+    BilinearTS2D *theCopy =
+        new BilinearTS2D (this->getTag(), delc, sigc, lamcr, cmult);
   
     theCopy->sigma = sigma;
     theCopy->D = D;
@@ -260,21 +260,21 @@ ExponentialTS2D::getCopy (void)
 }
 
 const char*
-ExponentialTS2D::getType (void) const
+BilinearTS2D::getType (void) const
 {
     return "2D";
 }
 
 int
-ExponentialTS2D::getOrder (void) const
+BilinearTS2D::getOrder (void) const
 {
   return 2;
 }
 
 int 
-ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
+BilinearTS2D::sendSelf(int commitTag, Channel &theChannel)
 {
-    opserr << "ExponentialTS2D::sendSelf()" << endln;
+    opserr << "BilinearTS2D::sendSelf()" << endln;
     static Vector data(6);
   
     // note this is incomplete, should send other vectors as well?
@@ -287,7 +287,7 @@ ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
   
     int res = theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ExponentialTS2D::sendSelf -- could not send Vector\n";
+        opserr << "BilinearTS2D::sendSelf -- could not send Vector\n";
         return res;
     }
 
@@ -295,15 +295,15 @@ ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 }
 
 int 
-ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
+BilinearTS2D::recvSelf(int commitTag, Channel &theChannel,
 					FEM_ObjectBroker &theBroker)
 {
-    opserr << "ExponentialTS2D::recvSelf()" << endln;
+    opserr << "BilinearTS2D::recvSelf()" << endln;
     static Vector data(6);
   
     int res = theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ExponentialTS2D::sendSelf -- could not send Vector\n";
+        opserr << "BilinearTS2D::sendSelf -- could not send Vector\n";
         return res;
     }
 

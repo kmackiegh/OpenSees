@@ -17,31 +17,31 @@
 **   Filip C. Filippou (filippou@ce.berkeley.edu)                     **
 **                                                                    **
 ** ****************************************************************** */
+                                                                        
+#ifndef BilinearTS2D_h
+#define BilinearTS2D_h
 
-#ifndef ElasticTS2D_h
-#define ElasticTS2D_h
-
-// Written: KRM
-// Created: 09/2019
+// Written: krm
+// Created: 1/2020
 //
 // Description: 
 //
-// What: "@(#) ElasticTS2D.h, revA"
+// What: "@(#) BilinearTS2D.h, revA"
 
-#include <ElasticTS.h>
+#include <BilinearTS.h>
 
 #include <Matrix.h>
 #include <Vector.h>
 #include <ID.h>
 
-class ElasticTS2D : public ElasticTS
+class BilinearTS2D : public BilinearTS
 {
   public:
-    ElasticTS2D(int tag, double d1, double d2, double s1, double s2, double cm);
-    ElasticTS2D();
-    ~ElasticTS2D();
+    BilinearTS2D(int tag, double dc, double sc, double lc, double cm);
+    BilinearTS2D();
+    ~BilinearTS2D();
 
-    const char *getClassType(void) const {return "ElasticTS2D";};
+    const char *getClassType(void) const {return "BilinearTS2D";};
 
     int setTrialStrain (const Vector &v);
     int setTrialStrain (const Vector &v, const Vector &r);
@@ -93,6 +93,9 @@ class ElasticTS2D : public ElasticTS
     double ETn;
     double ENt;
     double ENn;
+    
+    // history variables
+    double delmax;
     
 };
 
