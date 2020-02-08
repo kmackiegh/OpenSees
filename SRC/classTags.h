@@ -381,6 +381,8 @@
 #define ND_TAG_ExponentialTS2D 68
 #define ND_TAG_ElasticTS 69
 #define ND_TAG_ElasticTS2D 70
+#define ND_TAG_BilinearTS 71
+#define ND_TAG_BilinearTS2D 72
 
 #define ND_TAG_FluidSolidPorousMaterial        100
 #define ND_TAG_PressureDependMultiYield		101
@@ -740,9 +742,19 @@
 #define ELE_TAG_PFEMElement3DBubble       189
 #define ELE_TAG_LinearElasticSpring       190
 #define ELE_TAG_Inerter                   191
+<<<<<<< HEAD
 #define ELE_TAG_ComponentElement2d        192
 #define ELE_TAG_CohesiveZoneQuad          193
+=======
+#define ELE_TAG_GradientInelasticBeamColumn2d	192
+#define ELE_TAG_GradientInelasticBeamColumn3d	193
+#define ELE_TAG_CohesiveZoneQuad 194
+#define ELE_TAG_ComponentElement2d       195
+#define ELE_TAG_InerterElement 196
+>>>>>>> c49d9f73c738eebb6026b505ce5a66dd7180e368
 #define ELE_TAG_ExternalElement           99990  
+
+
 
 #define FRN_TAG_Coulomb            1
 #define FRN_TAG_VelDependent       2
