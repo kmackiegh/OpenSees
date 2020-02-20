@@ -30,9 +30,9 @@ Matrix ExponentialTS2D::tangent(2,2);
 Vector ExponentialTS2D::state(1);
 
 ExponentialTS2D::ExponentialTS2D
-(int tag, double d1, double d2, double s1, double s2, double l, double b) :
+(int tag, double d1, double d2, double s1, double s2, double l, double a, double b) :
  ExponentialTS (tag, ND_TAG_ExponentialTS2D,
-                d1, d2, s1, s2, l, b),
+                d1, d2, s1, s2, l, a, b),
  sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
@@ -41,7 +41,7 @@ ExponentialTS2D::ExponentialTS2D
 
 ExponentialTS2D::ExponentialTS2D():
  ExponentialTS (0, ND_TAG_ExponentialTS2D,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
@@ -247,7 +247,7 @@ NDMaterial*
 ExponentialTS2D::getCopy (void)
 {
     ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,beta);
+        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,alpha,beta);
   
     theCopy->sigma = sigma;
     theCopy->D = D;

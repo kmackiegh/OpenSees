@@ -50,13 +50,13 @@ OPS_NewExponentialTS(void)
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 7) {
-        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? beta?" << endln;
+    if (numArgs < 8) {
+        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? alpha? beta?" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[6];
+    double dData[7];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
@@ -70,7 +70,7 @@ OPS_NewExponentialTS(void)
         return 0;
     }
 
-    theMaterial = new ExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5]);
+    theMaterial = new ExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5], dData[6]);
 
     return theMaterial;
 }
@@ -78,9 +78,9 @@ OPS_NewExponentialTS(void)
 
 
 ExponentialTS::ExponentialTS
-(int tag, int classTag, double d1, double d2, double s1, double s2, double l, double b)
+(int tag, int classTag, double d1, double d2, double s1, double s2, double l, double a, double b)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), beta(b)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b)
 {
     // do some input checks
     if (delt < 0)
@@ -93,22 +93,24 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), beta(b)
         sig_max = fabs(sig_max);
     if (lambda < 0.5 || lambda > 1)
         lambda = 1;
+    if (alpha < 0.5 || alpha > 1)
+        alpha = 1;
     if (beta <= 0)
         beta = 1.0;
     
     // derived properties
-    phit = delt*tau_max/sqrt(2/exp(1));
-    phin = deln*exp(1)*sig_max;
+    phit = delt/2/lambda*tau_max * pow(2*lambda*exp(1)/(2*lambda-1), 1-1/2/lambda);
+    phin = deln/alpha*sig_max * pow(alpha*exp(1)/(2*alpha-1), 2-1/alpha);
 }
 
 ExponentialTS::ExponentialTS
-(int tag, double d1, double d2, double s1, double s2, double l, double b)
+(int tag, double d1, double d2, double s1, double s2, double l, double a, double b)
   :NDMaterial(tag, ND_TAG_ExponentialTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), beta(b)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b)
 {
     // derived properties
-    phit = delt*tau_max/sqrt(2/exp(1));
-    phin = deln*exp(1)*sig_max;
+    phit = delt/2/lambda*tau_max * pow(2*lambda*exp(1)/(2*lambda-1), 1-1/2/lambda);
+    phin = deln/alpha*sig_max * pow(alpha*exp(1)/(2*alpha-1), 2-1/alpha);
 }
 
 ExponentialTS::~ExponentialTS()
@@ -127,7 +129,7 @@ ExponentialTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         ExponentialTS2D *theModel;
-        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, beta);
+        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, alpha, beta);
 
         return theModel;
     }
@@ -315,7 +317,7 @@ ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(7);
+    static Vector data(8);
 
     data(0) = this->getTag();
     data(1) = delt;
@@ -323,7 +325,8 @@ ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
     data(3) = tau_max;
     data(4) = sig_max;
     data(5) = lambda;
-    data(6) = beta;
+    data(6) = alpha;
+    data(7) = beta;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -340,7 +343,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
 {
     int res = 0;
 
-    static Vector data(7);
+    static Vector data(8);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -354,7 +357,8 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
     tau_max = data(3);
     sig_max = data(4);
     lambda = data(5);
-    beta = data(6);
+    alpha = data(6);
+    beta = data(7);
     
     return res;
 }
@@ -365,7 +369,8 @@ ExponentialTS::Print (OPS_Stream &s, int flag)
 	s << "Exponential Traction Slip Material Model" << endln;
 	s << "\tdelt: " << delt << ", deln: " << deln << endln;
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
-    s << "\tlambda: " << lambda << ", phit: " << phit << ", phin: " << phin << endln;
+    s << "\tlambda: " << lambda << ", alpha: " << alpha << endln;
+    s << "\tphit: " << phit << ", phin: " << phin << endln;
     s << "\tbeta: " << beta << endln;
 
 	return;
@@ -382,12 +387,12 @@ ExponentialTS::Shear_Envlp (double Delt, double Deln,
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
     
-    double e1 = exp(-Delnbar);
-    double e2 = exp(-Deltbar*Deltbar);
+    double e1 = exp(-pow(Delnbar, alpha));
+    double e2 = exp(-pow(fabs(Deltbar), 2*lambda));
     
-    Tt = 2*phit/delt * Deltbar*(1+Delnbar) * e1 * e2;
-    ETn = -2*phit/deln/delt * e1*e2 * Delnbar*Deltbar;
-    ETt = 2*phit/delt/delt * e1*e2 * (1+Delnbar)*(1-2*Deltbar*Deltbar);
+    Tt = 2*lambda*phit/delt * (1+pow(Delnbar, alpha)) * Deltbar * pow(fabs(Deltbar), 2*lambda-2) * e1 * e2;
+    ETn = -2*alpha*lambda*phit/deln/delt * e1*e2 * pow(Delnbar, 2*alpha-1) * Deltbar*pow(fabs(Deltbar), 2*lambda-2);
+    ETt = 2*lambda*phit/delt/delt * e1*e2 * (1+pow(Delnbar, alpha)) * (2*lambda*(1-pow(fabs(Deltbar), 2*lambda))-1);
     
     return;
 }
@@ -403,12 +408,18 @@ ExponentialTS::Normal_Envlp (double Delt, double Deln,
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
     
-    double e1 = exp(-Delnbar);
-    double e2 = exp(-Deltbar*Deltbar);
+    double e1 = exp(-pow(Delnbar, alpha));
+    double e2 = exp(-pow(fabs(Deltbar), 2*lambda));
+
+    // compression normal multiplier
+    double cmult = 1.0;
+    if (Deln < 0) {
+        cmult = 10000.0;
+    }
     
-    Tn = phin/deln * Delnbar * e1 * e2;
-    ENn = phin/deln/deln * e1*e2 * (1-Delnbar);
-    ENt = -2*phin/deln/delt * e1*e2 * Delnbar*Deltbar;
+    Tn = cmult * alpha*phin/deln * pow(Delnbar, 2*alpha-1) * e1 * e2;
+    ENn = cmult * alpha*phin/deln/deln * e1*e2 * pow(Delnbar, 2*alpha-2)*(1-alpha*(pow(Delnbar, alpha)-2));
+    ENt = -2*alpha*lambda*phin/deln/delt * e1*e2 * pow(Delnbar, 2*alpha-1) * Deltbar*pow(fabs(Deltbar), 2*lambda-2);
     
     return;
 }

@@ -132,7 +132,7 @@ void* OPS_InerterElement()
 InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
             int iType, double Cin,
             const Vector &x, const Vector &yp, int doRayleigh)
- :Element(tag,0),
+ :Element(tag,ELE_TAG_InerterElement),
   connectedExternalNodes(2),
   dimension(dim), numDOF(0), transformation(3,3), useRayleighDamping(doRayleigh),
   theMatrix(0), theVector(0)
@@ -158,7 +158,7 @@ InerterElement::InerterElement(int tag, int dim, int Nd1, int Nd2,
 //   invoked by a FEM_ObjectBroker - blank object that recvSelf needs
 //   to be invoked upon
 InerterElement::InerterElement(void)
-  :Element(0,0),
+  :Element(0,ELE_TAG_InerterElement),
   connectedExternalNodes(2),
   dimension(0), numDOF(0), transformation(3,3), useRayleighDamping(0),
   theMatrix(0), theVector(0)

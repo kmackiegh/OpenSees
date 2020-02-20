@@ -32,11 +32,11 @@ class ExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ExponentialTS (int tag, int classTag,
-                   double d1, double d2, double s1, double s2, double l, double b);
+                   double d1, double d2, double s1, double s2, double l, double a, double b);
 
     // Called by clients
     ExponentialTS (int tag,
-                   double d1, double d2, double s1, double s2, double l, double b);
+                   double d1, double d2, double s1, double s2, double l, double a, double b);
 
     // For parallel processing
     ExponentialTS (void);
@@ -92,6 +92,7 @@ class ExponentialTS : public NDMaterial
     double tau_max;
     double sig_max;
     double lambda;
+    double alpha;
     double beta;
     // derived
     double phit;
