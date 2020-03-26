@@ -272,6 +272,7 @@ GGD_LIBS = $(FE)/element/joint/MP_Joint2D.o \
 	$(FE)/element/joint/MP_Joint3D.o \
 	$(FE)/element/joint/Joint2D.o \
 	$(FE)/element/joint/Joint3D.o \
+	$(FE)/element/joint/LehighJoint2d.o \
 	$(FE)/element/joint/BeamColumnJoint2d.o \
 	$(FE)/element/joint/BeamColumnJoint3d.o \
 	$(FE)/element/joint/ElasticTubularJoint.o \
@@ -524,6 +525,8 @@ ELE_LIBS   =  $(FE)/element/Element.o \
 	$(FE)/element/elasticBeamColumn/WheelRail.o \
 	$(FE)/element/gradientInelasticBeamColumn/GradientInelasticBeamColumn2d.o \
 	$(FE)/element/gradientInelasticBeamColumn/GradientInelasticBeamColumn3d.o \
+	$(FE)/element/mixedBeamColumn/MixedBeamColumn2d.o \
+	$(FE)/element/mixedBeamColumn/MixedBeamColumn3d.o \
 	$(FE)/element/fourNodeQuad/FourNodeQuad.o \
 	$(FE)/element/fourNodeQuad/FourNodeQuad3d.o \
 	$(FE)/element/fourNodeQuad/FourNodeQuadWithSensitivity.o \
@@ -646,6 +649,7 @@ endif
 
 ifdef FILIP_FLAG
 	FILIP = $(FE)/element/filip/BeamColumn2DwLHNMYS.o \
+	$(FE)/element/filip/BeamColumn3DwLHNMYS.o \
 	$(FE)/element/filip/GPYS.o
 else
 	FILIP = 
@@ -766,8 +770,8 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
 	$(FE)/material/uniaxial/pyUCLA.o \
 	$(FE)/material/uniaxial/FatigueMaterial.o \
 	$(FE)/material/uniaxial/SAWSMaterial.o \
-	$(FE)/material/uniaxial/snap/Bilin.o \
-	$(FE)/material/uniaxial/snap/Bilin02.o \
+	$(FE)/material/uniaxial/Bilin.o \
+	$(FE)/material/uniaxial/Bilin02.o \
 	$(FE)/material/uniaxial/ConfinedConcrete01.o \
 	$(FE)/material/uniaxial/CableMaterial.o \
 	$(FE)/material/uniaxial/ENTMaterial.o \
