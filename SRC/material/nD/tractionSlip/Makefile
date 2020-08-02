@@ -3,7 +3,8 @@ include ../../../../Makefile.def
 
 OBJS       = ExponentialTS.o ExponentialTS2D.o \
 		ElasticTS.o ElasticTS2D.o \
-		BilinearTS.o BilinearTS2D.o
+		BilinearTS.o BilinearTS2D.o \
+		PDRExponentialTS.o PDRExponentialTS2D.o
 
 
 all: $(OBJS) 
