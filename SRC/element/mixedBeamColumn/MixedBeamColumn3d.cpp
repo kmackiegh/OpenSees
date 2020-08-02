@@ -70,9 +70,9 @@ Vector MixedBeamColumn3d::theVector(NEGD);
 double MixedBeamColumn3d::workArea[400];
 Matrix MixedBeamColumn3d::transformNaturalCoords(NDM_NATURAL_WITH_TORSION,NDM_NATURAL_WITH_TORSION);
 Matrix MixedBeamColumn3d::transformNaturalCoordsT(NDM_NATURAL_WITH_TORSION,NDM_NATURAL_WITH_TORSION);
-int MixedBeamColumn3d::maxNumSections = 10;
 
 Vector *MixedBeamColumn3d::sectionDefShapeFcn = 0;
+Vector* MixedBeamColumn3d::sectionForceShapeFcn = 0;
 Matrix *MixedBeamColumn3d::nldhat = 0;
 Matrix *MixedBeamColumn3d::nd1 = 0;
 Matrix *MixedBeamColumn3d::nd2 = 0;
@@ -137,13 +137,13 @@ void * OPS_MixedBeamColumn3d() {
   }
 
   // Check for minimum number of arguments
-  if (OPS_GetNumRemainingInputArgs() < 6) {
-    opserr << "ERROR: MixedBeamColumn3d: too few arguments\n";
+  if (OPS_GetNumRemainingInputArgs() < 5) {
+    opserr << "ERROR: MixedBeamColumn3d, too few arguments: eleTag,ndI,ndJ,transfTag,integrationTag\n";
     return 0;
   }
 
   // Get required input data
-  numData = 6;
+  numData = 5;
   if (OPS_GetIntInput(&numData, iData) != 0) {
     opserr << "WARNING invalid element data - MixedBeamColumn3d\n";
     return 0;
@@ -151,21 +151,8 @@ void * OPS_MixedBeamColumn3d() {
   int eleTag = iData[0];
   int nodeI = iData[1];
   int nodeJ = iData[2];
-  int numIntgrPts = iData[3];
-  int secTag = iData[4];
-  int transfTag = iData[5];
-
-  // Get the section
-  SectionForceDeformation *theSection = OPS_getSectionForceDeformation(secTag);
-  if (theSection == 0) {
-    opserr << "WARNING section with tag " << secTag << "not found for element " << eleTag << endln;
-    return 0;
-  }
-
-  SectionForceDeformation **sections = new SectionForceDeformation *[numIntgrPts];
-  for (int i = 0; i < numIntgrPts; i++) {
-    sections[i] = theSection;
-  }
+  int transfTag = iData[3];
+  int beamIntTag = iData[4];
 
   // Get the coordinate transformation
   CrdTransf *theTransf = OPS_getCrdTransf(transfTag);
@@ -174,20 +161,38 @@ void * OPS_MixedBeamColumn3d() {
     return 0;
   }
 
+  // Get beam integrataion
+  BeamIntegrationRule* theRule = OPS_getBeamIntegrationRule(beamIntTag);
+  if(theRule == 0) {
+    opserr<<"beam integration not found\n";
+    return 0;
+  }
+  BeamIntegration* bi = theRule->getBeamIntegration();
+  if(bi == 0) {
+    opserr<<"beam integration is null\n";
+    return 0;
+  }  
+
+  // check sections
+  const ID& secTags = theRule->getSectionTags();
+  SectionForceDeformation** sections = new SectionForceDeformation *[secTags.Size()];
+  for(int i=0; i<secTags.Size(); i++) {
+    sections[i] = OPS_getSectionForceDeformation(secTags(i));
+    if(sections[i] == 0) {
+      opserr<<"section "<<secTags(i)<<"not found\n";
+      delete [] sections;
+      return 0;
+    }
+  }
+  
   // Set Default Values for Optional Input
   int doRayleigh = 1;
   double massDens = 0.0;
   bool geomLinear = true;
-  BeamIntegration *beamIntegr = 0;
 
   // Loop through remaining arguments to get optional input
   while ( OPS_GetNumRemainingInputArgs() > 0 ) {
     const char *sData = OPS_GetString();
-    //if ( OPS_GetStringCopy(&sData) != 0 ) {
-    //  opserr << "WARNING invalid input";
-    //  return 0;
-    //}
-
     if ( strcmp(sData,"-mass") == 0 ) {
       numData = 1;
       if (OPS_GetDoubleInput(&numData, dData) != 0) {
@@ -195,41 +200,6 @@ void * OPS_MixedBeamColumn3d() {
         return 0;
       }
       massDens = dData[0];
-
-    } else if ( strcmp(sData,"-integration") == 0 ) {
-      const char *sData2 = OPS_GetString();
-      //if ( OPS_GetStringCopy(&sData2) != 0 ) {
-      //  opserr << "WARNING invalid input, want: -integration $intType";
-      //  return 0;
-      //}
-
-      if (strcmp(sData2,"Lobatto") == 0) {
-        beamIntegr = new LobattoBeamIntegration();
-      } else if (strcmp(sData2,"Legendre") == 0) {
-        beamIntegr = new LegendreBeamIntegration();
-      } else if (strcmp(sData2,"Radau") == 0) {
-        beamIntegr = new RadauBeamIntegration();
-      } else if (strcmp(sData2,"NewtonCotes") == 0) {
-        beamIntegr = new NewtonCotesBeamIntegration();
-      } else if (strcmp(sData2,"Trapezoidal") == 0) {
-        beamIntegr = new TrapezoidalBeamIntegration();
-      } else if (strcmp(sData2,"RegularizedLobatto") == 0 || strcmp(sData2,"RegLobatto") == 0) {
-        numData = 4;
-        if (OPS_GetDoubleInput(&numData, dData) != 0) {
-          opserr << "WARNING invalid input, want: -integration RegularizedLobatto $lpI $lpJ $zetaI $zetaJ \n";
-          return 0;
-        }
-        BeamIntegration *otherBeamInt = 0;
-        otherBeamInt = new LobattoBeamIntegration();
-        beamIntegr = new RegularizedHingeIntegration(*otherBeamInt, dData[0], dData[1], dData[2], dData[3]);
-          if (otherBeamInt != 0) {
-            delete otherBeamInt;
-          }
-      } else {
-        opserr << "WARNING invalid integration type, element: " << eleTag;
-        return 0;
-      }
-      //delete [] sData2;
 
     } else if ( strcmp(sData,"-doRayleigh") == 0 ) {
         numData = 1;
@@ -244,17 +214,10 @@ void * OPS_MixedBeamColumn3d() {
     } else {
       opserr << "WARNING unknown option " << sData << "\n";
     }
-    //delete [] sData;
-  }
-
-
-  // Set the beam integration object if not in options
-  if (beamIntegr == 0) {
-    beamIntegr = new LobattoBeamIntegration();
   }
 
   // now create the element and add it to the Domain
-  Element *theElement = new MixedBeamColumn3d(eleTag, nodeI, nodeJ, numIntgrPts, sections, *beamIntegr, *theTransf, massDens, doRayleigh, geomLinear);
+  Element *theElement = new MixedBeamColumn3d(eleTag, nodeI, nodeJ, secTags.Size(), sections, *bi, *theTransf, massDens, doRayleigh, geomLinear);
 
   if (theElement == 0) {
     opserr << "WARNING ran out of memory creating element with tag " << eleTag << endln;
@@ -316,7 +279,7 @@ MixedBeamColumn3d::MixedBeamColumn3d (int tag, int nodeI, int nodeJ, int numSec,
 
 
   //this->setSectionPointers(numSec,sec);
-  if (numSec > maxNumSections) {
+  if (numSec > MAX_NUM_SECTIONS) {
     opserr << "Error: MixedBeamColumn3d::setSectionPointers -- max number of sections exceeded";
   }
 
@@ -411,24 +374,26 @@ MixedBeamColumn3d::MixedBeamColumn3d (int tag, int nodeI, int nodeJ, int numSec,
   }
 
   if (sectionDefShapeFcn == 0)
-    sectionDefShapeFcn  = new Vector [maxNumSections];
+    sectionDefShapeFcn  = new Vector [MAX_NUM_SECTIONS];
+  if (sectionForceShapeFcn == 0)
+      sectionForceShapeFcn = new Vector[MAX_NUM_SECTIONS];
   if (nldhat == 0)
-    nldhat  = new Matrix [maxNumSections];
+    nldhat  = new Matrix [MAX_NUM_SECTIONS];
   if (nd1 == 0)
-    nd1  = new Matrix [maxNumSections];
+    nd1  = new Matrix [MAX_NUM_SECTIONS];
   if (nd2 == 0)
-    nd2  = new Matrix [maxNumSections];
+    nd2  = new Matrix [MAX_NUM_SECTIONS];
   if (nd1T == 0)
-    nd1T  = new Matrix [maxNumSections];
+    nd1T  = new Matrix [MAX_NUM_SECTIONS];
   if (nd2T == 0)
-    nd2T  = new Matrix [maxNumSections];
-  if (!sectionDefShapeFcn || !nldhat || !nd1 || !nd2 || !nd1T || !nd2T ) {
+    nd2T  = new Matrix [MAX_NUM_SECTIONS];
+  if (!sectionDefShapeFcn || !sectionForceShapeFcn || !nldhat || !nd1 || !nd2 || !nd1T || !nd2T ) {
     opserr << "MixedBeamColumn3d::MixedBeamColumn3d() -- failed to allocate static section arrays";
     exit(-1);
   }
 
   int i;
-  for ( i=0; i<maxNumSections; i++ ){
+  for ( i=0; i< MAX_NUM_SECTIONS; i++ ){
     nd1T[i] = Matrix(NDM_NATURAL,NDM_SECTION);
     nd2T[i] = Matrix(NDM_NATURAL,NDM_SECTION);
   }
@@ -523,24 +488,26 @@ MixedBeamColumn3d::MixedBeamColumn3d():
   }
 
   if (sectionDefShapeFcn == 0)
-    sectionDefShapeFcn  = new Vector [maxNumSections];
+    sectionDefShapeFcn  = new Vector [MAX_NUM_SECTIONS];
+  if (sectionForceShapeFcn == 0)
+      sectionForceShapeFcn = new Vector[MAX_NUM_SECTIONS];
   if (nldhat == 0)
-    nldhat  = new Matrix [maxNumSections];
+    nldhat  = new Matrix [MAX_NUM_SECTIONS];
   if (nd1 == 0)
-    nd1  = new Matrix [maxNumSections];
+    nd1  = new Matrix [MAX_NUM_SECTIONS];
   if (nd2 == 0)
-    nd2  = new Matrix [maxNumSections];
+    nd2  = new Matrix [MAX_NUM_SECTIONS];
   if (nd1T == 0)
-    nd1T  = new Matrix [maxNumSections];
+    nd1T  = new Matrix [MAX_NUM_SECTIONS];
   if (nd2T == 0)
-    nd2T  = new Matrix [maxNumSections];
-  if (!sectionDefShapeFcn || !nldhat || !nd1 || !nd2 || !nd1T || !nd2T ) {
+    nd2T  = new Matrix [MAX_NUM_SECTIONS];
+  if (!sectionDefShapeFcn || !sectionForceShapeFcn || !nldhat || !nd1 || !nd2 || !nd1T || !nd2T ) {
     opserr << "MixedBeamColumn3d::MixedBeamColumn3d() -- failed to allocate static section arrays";
     exit(-1);
   }
 
   int i;
-  for ( i=0; i<maxNumSections; i++ ){
+  for ( i=0; i< MAX_NUM_SECTIONS; i++ ){
     nd1T[i] = Matrix(NDM_NATURAL,NDM_SECTION);
     nd2T[i] = Matrix(NDM_NATURAL,NDM_SECTION);
   }
@@ -765,7 +732,7 @@ int MixedBeamColumn3d::revertToStart()
   initialLength = crdTransf->getInitialLength();
 
   // Get the numerical integration weights
-  double wt[maxNumSections]; // weights of sections or gauss points of integration points
+  double wt[MAX_NUM_SECTIONS]; // weights of sections or gauss points of integration points
   beamIntegr->getSectionWeights(numSections, initialLength, wt);
 
   // Vector of zeros to use at initial natural displacements
@@ -954,13 +921,12 @@ int MixedBeamColumn3d::update() {
   lastNaturalDisp = naturalDisp;
 
   // Get the numerical integration weights
-  double wt[maxNumSections]; // weights of sections or gauss points of integration points
+  double wt[MAX_NUM_SECTIONS]; // weights of sections or gauss points of integration points
   beamIntegr->getSectionWeights(numSections, initialLength, wt);
 
   // Define Variables
   double GJ;
   double torsionalForce;
-  Vector sectionForceShapeFcn[numSections];
   for ( i = 0; i < numSections; i++ ) {
     sectionForceShapeFcn[i] = Vector(NDM_SECTION);
   }
@@ -1165,7 +1131,7 @@ int MixedBeamColumn3d::addLoad(ElementalLoad *theLoad, double loadFactor) {
 
   double L = crdTransf->getInitialLength();
 
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   if (type == LOAD_TAG_Beam3dUniformLoad) {
@@ -1290,9 +1256,9 @@ void MixedBeamColumn3d::Print(OPS_Stream &s, int flag) {
 
   } else if (flag == 33) {
     s << "\nElement: " << this->getTag() << " Type: MixedBeamColumn3d ";
-    double xi[maxNumSections]; // location of sections or gauss points or integration points
+    double xi[MAX_NUM_SECTIONS]; // location of sections or gauss points or integration points
     beamIntegr->getSectionLocations(numSections, initialLength, xi);
-    double wt[maxNumSections]; // weights of sections or gauss points of integration points
+    double wt[MAX_NUM_SECTIONS]; // weights of sections or gauss points of integration points
     beamIntegr->getSectionWeights(numSections, initialLength, wt);
     s << "\n section xi wt";
     for (int i = 0; i < numSections; i++)
@@ -1311,7 +1277,7 @@ void MixedBeamColumn3d::Print(OPS_Stream &s, int flag) {
     beamIntegr->Print(s, flag);
     s << ", \"massperlength\": " << rho << ", ";
     s << "\"crdTransformation\": \"" << crdTransf->getTag() << "\"";
-    if (not doRayleigh)
+    if (!doRayleigh)
       s << ", \"doRayleigh\": false";
     if (geomLinear)
       s << ", \"geomLinear\": true";
@@ -1451,7 +1417,7 @@ Response* MixedBeamColumn3d::setResponse(const char **argv, int argc,
       int sectionNum = atoi(argv[1]);
       if (sectionNum > 0 && sectionNum <= numSections) {
 
-        double xi[maxNumSections];
+        double xi[MAX_NUM_SECTIONS];
         double L = crdTransf->getInitialLength();
         beamIntegr->getSectionLocations(numSections, L, xi);
 
@@ -1585,7 +1551,7 @@ int MixedBeamColumn3d::getResponse(int responseID, Information &eleInfo) {
 }
 
 Vector MixedBeamColumn3d::getd_hat(int sec, const Vector &v, double L, bool geomLinear) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double x, C, E, F;
@@ -1623,7 +1589,7 @@ Vector MixedBeamColumn3d::getd_hat(int sec, const Vector &v, double L, bool geom
 }
 
 Matrix MixedBeamColumn3d::getKg(int sec, double P, double L) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double temp_x, temp_A, temp_B;
@@ -1650,7 +1616,7 @@ Matrix MixedBeamColumn3d::getKg(int sec, double P, double L) {
 }
 
 Matrix MixedBeamColumn3d::getMd(int sec, Vector dShapeFcn, Vector dFibers, double L) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double x, A, B;
@@ -1671,7 +1637,7 @@ Matrix MixedBeamColumn3d::getMd(int sec, Vector dShapeFcn, Vector dFibers, doubl
 }
 
 Matrix MixedBeamColumn3d::getNld_hat(int sec, const Vector &v, double L, bool geomLinear) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double x, C, E, F;
@@ -1713,7 +1679,7 @@ Matrix MixedBeamColumn3d::getNld_hat(int sec, const Vector &v, double L, bool ge
 }
 
 Matrix MixedBeamColumn3d::getNd2(int sec, double P, double L) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double temp_x, temp_A, temp_B;
@@ -1735,7 +1701,7 @@ Matrix MixedBeamColumn3d::getNd2(int sec, double P, double L) {
 }
 
 Matrix MixedBeamColumn3d::getNd1(int sec, const Vector &v, double L, bool geomLinear) {
-  double xi[maxNumSections];
+  double xi[MAX_NUM_SECTIONS];
   beamIntegr->getSectionLocations(numSections, L, xi);
 
   double x = L*xi[sec];

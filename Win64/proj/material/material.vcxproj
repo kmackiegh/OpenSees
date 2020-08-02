@@ -283,6 +283,7 @@
     <ClCompile Include="..\..\..\SRC\material\uniaxial\ContinuumUniaxial.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\CubicSpline.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\DamperMaterial.cpp" />
+    <ClCompile Include="..\..\..\SRC\material\uniaxial\DegradingPinchedBW.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\Dodd_Restrepo.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\DrainMaterial.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\ECC01.cpp" />
@@ -344,6 +345,7 @@
     <ClCompile Include="..\..\..\SRC\material\uniaxial\SeriesMaterial.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\ShearPanelMaterial.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\SimpleFractureMaterial.cpp" />
+    <ClCompile Include="..\..\..\SRC\material\uniaxial\SLModel.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\SmoothPSConcrete.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\SPSW02.cpp" />
     <ClCompile Include="..\..\..\SRC\material\uniaxial\StainlessECThermal.cpp" />
@@ -694,6 +696,7 @@
     <ClInclude Include="..\..\..\SRC\material\uniaxial\ContinuumUniaxial.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\CubicSpline.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\DamperMaterial.h" />
+    <ClInclude Include="..\..\..\SRC\material\uniaxial\DegradingPinchedBW.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\Dodd_Restrepo.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\DrainMaterial.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\ECC01.h" />
@@ -754,6 +757,7 @@
     <ClInclude Include="..\..\..\SRC\material\uniaxial\SeriesMaterial.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\ShearPanelMaterial.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\SimpleFractureMaterial.h" />
+    <ClInclude Include="..\..\..\SRC\material\uniaxial\SLModel.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\SmoothPSConcrete.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\SPSW02.h" />
     <ClInclude Include="..\..\..\SRC\material\uniaxial\StainlessECThermal.h" />
