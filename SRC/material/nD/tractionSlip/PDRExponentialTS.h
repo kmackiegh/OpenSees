@@ -17,9 +17,9 @@
 **   Filip C. Filippou (filippou@ce.berkeley.edu)                     **
 **                                                                    **
 ** ****************************************************************** */
-                                            
-#ifndef BilinearTS_h
-#define BilinearTS_h
+                                                                
+#ifndef PDRExponentialTS_h
+#define PDRExponentialTS_h
 
 #include <NDMaterial.h>
 
@@ -27,23 +27,23 @@
 #include <Vector.h>
 #include <ID.h>
 
-class BilinearTS : public NDMaterial
+class PDRExponentialTS : public NDMaterial
 {
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
-    BilinearTS (int tag, int classTag,
-                   double dc, double sc, double lc, double cm);
+    PDRExponentialTS (int tag, int classTag,
+                   double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
 
     // Called by clients
-    BilinearTS (int tag,
-                   double dc, double sc, double lc, double cm);
+    PDRExponentialTS (int tag,
+                   double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
 
     // For parallel processing
-    BilinearTS (void);
+    PDRExponentialTS (void);
 
-    virtual ~BilinearTS (void);
+    virtual ~PDRExponentialTS (void);
 
-    virtual const char *getClassType(void) const {return "BilinearTS";};
+    virtual const char *getClassType(void) const {return "PDRExponentialTS";};
 
     virtual double getRho( ) ;
 
@@ -77,7 +77,7 @@ class BilinearTS : public NDMaterial
     Response *setResponse (const char **argv, int argc, OPS_Stream &output);
     int getResponse (int responseID, Information &matInformation);
     int updateState (const Information &matInformation);
-    
+
     virtual int sendSelf(int commitTag, Channel &theChannel);  
     virtual int recvSelf(int commitTag, Channel &theChannel, 
 		 FEM_ObjectBroker &theBroker);    
@@ -85,15 +85,31 @@ class BilinearTS : public NDMaterial
     void Print(OPS_Stream &s, int flag = 0);
     void Shear_Envlp (double Delt, double Deln, double &Tt, double &ETt, double &ETn);
     void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
+/**/
+	void update_ShearEnergy (double &tau_ult, double &tau_res, double &phit_new);
+	void residual_slip (double Delnbar, double tau_ult, double tau_res, double &del_res);
+/**/
     
   protected:
+	// passed as element info
+	Vector elmf;
+
     // passed as arguments
-    double delc;
-    double sigc;
-    double lamcr;
-    double cmult;
+    double delt;
+    double deln;
+    double tau_max;
+    double sig_max;
+    double phi_ang;
+    double lambda;
+    double alpha;
+    double phi_res;
+    double sig_cap;
+    double beta;
+    double kcmp;
+
     // derived
-    double phit;
+    double del_res;
+	//double phit;
     double phin;
     
   private:

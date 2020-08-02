@@ -37,7 +37,7 @@
 class ExponentialTS2D : public ExponentialTS
 {
   public:
-    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double l, double a, double b);
+    ExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double l, double a, double b, double k);
     ExponentialTS2D();
     ~ExponentialTS2D();
 

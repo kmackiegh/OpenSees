@@ -32,11 +32,11 @@ class ElasticTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ElasticTS (int tag, int classTag,
-               double d1, double d2, double s1, double s2, double cm);
+               double d1, double d2, double s1, double s2, double f, double cm);
 
     // Called by clients
     ElasticTS (int tag,
-               double d1, double d2, double s1, double s2, double cm);
+               double d1, double d2, double s1, double s2, double f, double cm);
 
     // For parallel processing
     ElasticTS (void);
@@ -76,27 +76,36 @@ class ElasticTS : public NDMaterial
     
     Response *setResponse (const char **argv, int argc, OPS_Stream &output);
     int getResponse (int responseID, Information &matInformation);
-    
+    int updateState (const Information &matInformation);
+	int retrieveState (const Vector &e);
+
     virtual int sendSelf(int commitTag, Channel &theChannel);  
     virtual int recvSelf(int commitTag, Channel &theChannel, 
 		 FEM_ObjectBroker &theBroker);    
     
     void Print(OPS_Stream &s, int flag = 0);
+	void update_ShearEnergy(double &kit); 
     void Shear_Envlp (double Delt, double Deln, double &Tt, double &ETt, double &ETn);
     void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
     
   protected:
+	// passed as element info
+	Vector elmf;
+
     // passed as arguments
     double delt;
     double deln;
     double tau_max;
     double sig_max;
+	double phi_ang;
     double cmult;
+	
     // derived
-    double kit;
     double kin;
+
     
   private:
+	
 
 };
 

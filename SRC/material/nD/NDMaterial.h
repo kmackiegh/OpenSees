@@ -85,6 +85,7 @@ class NDMaterial : public Material
     virtual Response *setResponse (const char **argv, int argc, 
 				   OPS_Stream &s);
     virtual int getResponse (int responseID, Information &matInformation);
+    virtual int updateState (const Information &matInformation);
 
 // AddingSensitivity:BEGIN //////////////////////////////////////////
     virtual const Vector & getStressSensitivity     (int gradIndex, bool conditional);

@@ -312,6 +312,17 @@ int BilinearTS::getResponse (int responseID, Information &matInfo)
 }
 
 int
+BilinearTS::updateState (const Information &matInfo)
+{
+    Vector *delp = matInfo.theVector;
+    
+    // Felipe, need some logic on how to update sigc and delc for Bilinear
+    opserr << "BilinearTS::updateState recevied delp = " << delp << endln;
+    
+    return 0;
+}
+
+int
 BilinearTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
@@ -420,4 +431,3 @@ BilinearTS::Normal_Envlp (double Delt, double Deln,
     
     return;
 }
-

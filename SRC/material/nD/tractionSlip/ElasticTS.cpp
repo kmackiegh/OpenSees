@@ -41,7 +41,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <algorithm>
 
 void *
 OPS_NewElasticTS(void)
@@ -50,13 +50,13 @@ OPS_NewElasticTS(void)
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 5) {
-        opserr << "Want: nDMaterial ElasticTS tag? delt? deln? tau_max? sig_max? <cmult?>" << endln;
+    if (numArgs < 7) {
+        opserr << "Want: nDMaterial ElasticTS tag? delt? deln? tau_max? sig_max? phi_ang? cmult?" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[4];
+    double dData[6];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
@@ -64,22 +64,13 @@ OPS_NewElasticTS(void)
         return 0;
     }
 
-    numData = 4;
+    numData = numArgs - 1;;
     if (OPS_GetDouble(&numData, dData) != 0) {
         opserr << "WARNING invalid data: nDMaterial ElasticTS: " << dData[0] <<"\n";
         return 0;
     }
-    
-    double cmult = 1.0;
-    numData = 1;
-    if (numArgs == 6) {
-        if (OPS_GetDouble(&numData, &cmult) != 0) {
-            opserr << "WARNING invalid cmult: nDMaterial ElasticTS: " << cmult <<"\n";
-            return 0;
-        }
-    }
 
-    theMaterial = new ElasticTS(iData[0], dData[0], dData[1], dData[2], dData[3], cmult);
+    theMaterial = new ElasticTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5]);
 
     return theMaterial;
 }
@@ -87,9 +78,9 @@ OPS_NewElasticTS(void)
 
 
 ElasticTS::ElasticTS
-(int tag, int classTag, double d1, double d2, double s1, double s2, double cm)
+(int tag, int classTag, double d1, double d2, double s1, double s2, double f, double cm)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), cmult(cm)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(f), cmult(cm)
 {
     // do some input checks
     if (delt < 0)
@@ -100,21 +91,23 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), cmult(cm)
         tau_max = fabs(tau_max);
     if (sig_max < 0)
         sig_max = fabs(sig_max);
+    if (phi_ang < 0)
+        phi_ang = fabs(phi_ang);
     if (cmult <= 0)
         cmult = 1.0;
     
     // derived properties
-    kit = tau_max/delt;
+    //kit = tau_max/delt;
     kin = sig_max/deln;
 }
 
 ElasticTS::ElasticTS
-(int tag, double d1, double d2, double s1, double s2, double cm)
+(int tag, double d1, double d2, double s1, double s2, double f, double cm)
   :NDMaterial(tag, ND_TAG_ElasticTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), cmult(cm)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(f), cmult(cm)
 {
     // derived properties
-    kit = tau_max/delt;
+    //kit = tau_ult/delt;
     kin = sig_max/deln;
 }
 
@@ -134,7 +127,7 @@ ElasticTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         ElasticTS2D *theModel;
-        theModel = new ElasticTS2D (this->getTag(), delt, deln, tau_max, sig_max, cmult);
+        theModel = new ElasticTS2D (this->getTag(), delt, deln, tau_max, sig_max, phi_ang, cmult);
 
         return theModel;
     }
@@ -318,17 +311,39 @@ int ElasticTS::getResponse (int responseID, Information &matInfo)
 }
 
 int
+ElasticTS::updateState (const Information &matInfo)
+{
+    //Vector *delp = matInfo.theVector;
+
+	// store in a local variable
+	elmf = *matInfo.theVector;
+    
+    // Felipe, need some logic on how to update sigc and delc for Elastic (or not at all)
+   // opserr << "ElasticTS::updateState recevied force = " << elmf << endln;
+    
+    return 0;
+}
+
+int
+ElasticTS::retrieveState (const Vector &elmf)
+{   
+    return 0;
+}
+
+int
 ElasticTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(5);
+    static Vector data(7);
 
     data(0) = this->getTag();
     data(1) = delt;
     data(2) = deln;
     data(3) = tau_max;
     data(4) = sig_max;
+	data(5) = phi_ang;
+	data(6) = cmult;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -345,7 +360,7 @@ ElasticTS::recvSelf (int commitTag, Channel &theChannel,
 {
     int res = 0;
 
-    static Vector data(5);
+    static Vector data(7);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -358,6 +373,8 @@ ElasticTS::recvSelf (int commitTag, Channel &theChannel,
     deln = data(2);
     tau_max = data(3);
     sig_max = data(4);
+	phi_ang = data(5);
+	cmult = data(6);
     
     return res;
 }
@@ -368,7 +385,7 @@ ElasticTS::Print (OPS_Stream &s, int flag)
 	s << "Elastic Traction Slip Material Model" << endln;
 	s << "\tdelt: " << delt << ", deln: " << deln << endln;
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
-    s << "\tkit: " << kit << ", kin: " << kin << endln;
+    s << "\tphi_ang: " << phi_ang << ", kin: " << kin << endln;
 
 	return;
 }
@@ -380,9 +397,14 @@ ElasticTS::Shear_Envlp (double Delt, double Deln,
     // shear monotonic envelope function
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
+	double kit = 0; 
+	update_ShearEnergy(kit);
+
     Tt = kit*Delt;
     ETn = 0;
     ETt = kit;
+
+	//opserr << "ElasticTS::Shear_Envlp computed kit = " << kit << endln;
     
     return;
 }
@@ -393,16 +415,68 @@ ElasticTS::Normal_Envlp (double Delt, double Deln,
 {
     // shear monotonic envelope function
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
-    
-    // compression normal multiplier
-    double cloc = 1.0;
-    if (Deln < 0)
-        cloc = cmult;
-    
-    Tn = (cloc*kin)*Deln;
-    ENn = cloc*kin;
+        
+    Tn = kin*Deln;
+    ENn = kin;
     ENt = 0;
+
+	// compression:
+	if (Deln < 0) {
+		Tn = cmult*kin*Deln;
+		ENn = cmult*kin*Deln;
+		ENt = 0;
+	}
     
     return;
 }
 
+void
+ElasticTS::update_ShearEnergy (double &kit_new)
+{
+	// shear monotonic update function
+	// takes current kit and returns it updated
+	// Mohr-Coulomb envelope tau = c + sigma*tan(phi_ang);
+	
+	//opserr << "ShearEnergy elmf = " << elmf << endln;	
+
+	double pi = 3.14159265359;
+	double phi = pi*phi_ang/180;
+
+	double sig_max = 0;
+	double sig_min = 0;
+	double sigma = 0;
+	if (elmf.Size() != 0) {
+		//int i = intp(1);
+		double area = elmf(2);
+		
+		sig_max = std::max(elmf(0),elmf(1))/area;
+		sig_min = std::min(elmf(0),elmf(1))/area;
+		sigma = elmf(1)/area;
+	}
+
+	// tension cut-off:
+	if (sig_min > 0)
+		sig_min = 0;
+	if (sig_max > 0)
+		sig_min = 0;
+	if (sigma > 0)
+		sigma = 0;
+	
+	// failure parameters
+	double fang = pi/2 + phi;									
+	//double fsig = (sig_max+sig_min)/2 + (sig_max-sig_min)/2 * cos(2*fang);
+	double fsig = sigma;
+
+	// Compression cap:
+	// none for elasticTS
+
+	double tau_ult = tau_max;					
+	if (fsig <= 0) {										// if compression
+        tau_ult = tau_max - fsig*tan(phi);					// tau @failure
+        //opserr << "fsigma = " << fsig << " ftau = " << tau_ult/tau_max << endln;
+	}
+
+    kit_new = tau_ult/delt;
+
+	return;
+}

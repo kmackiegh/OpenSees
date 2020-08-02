@@ -896,6 +896,8 @@ MATERIAL_LIBS   =  $(FE)/material/Material.o \
     $(FE)/material/nD/tractionSlip/ElasticTS2D.o \
     $(FE)/material/nD/tractionSlip/BilinearTS.o \
     $(FE)/material/nD/tractionSlip/BilinearTS2D.o \
+    $(FE)/material/nD/tractionSlip/PDRExponentialTS.o \
+    $(FE)/material/nD/tractionSlip/PDRExponentialTS2D.o \
 	$(FE)/material/nD/PlaneStressMaterial.o \
 	$(FE)/material/nD/PlaneStrainMaterial.o \
 	$(FE)/material/nD/PlateFiberMaterial.o \

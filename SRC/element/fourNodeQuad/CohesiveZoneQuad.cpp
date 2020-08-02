@@ -145,7 +145,7 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 			   NDMaterial &m, double t, int it, const Vector _vec)
 :Element (tag, ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(t), vecn(_vec), ae(4,8), Ki(0)
+ Q(8), delp(4), thickness(t), vecn(_vec), ae(4,8), Ki(0)
 {
     // default node indexing
     int i;
@@ -205,7 +205,7 @@ CohesiveZoneQuad::CohesiveZoneQuad(int tag, int nd1, int nd2, int nd3, int nd4,
 CohesiveZoneQuad::CohesiveZoneQuad()
 :Element (0,ELE_TAG_CohesiveZoneQuad),
   theMaterial(0), connectedExternalNodes(4), 
- Q(8), thickness(0.0), vecn(0), ae(4,8), Ki(0)
+ Q(8), delp(4), thickness(0.0), vecn(0), ae(4,8), Ki(0)
 {
     // integration scheme defaults to Gauss, this may be able to initialize to zero
     pts[0] = -0.5773502691896258;
@@ -311,10 +311,11 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
     crossk(2) = vecn(0)*l34(1) - vecn(1)*l34(0);
     crossk(3) = vecn(0)*l41(1) - vecn(1)*l41(0);
     
+	// vface = 1 swapped for vface = 3 to account for rotation of IP
     int vface = 0;
     double kcrit = crossk(0);
     if ( crossk(1) > kcrit) {
-        vface = 1;
+        vface = 3;
         kcrit = crossk(1);
     }
     if ( crossk(2) > kcrit) {
@@ -322,9 +323,34 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
         kcrit = crossk(2);
     }
     if ( crossk(3) > kcrit) {
-        vface = 3;
+        vface = 1;
         kcrit = crossk(3);
     }
+    
+    // store ordering of displacement dofs
+    Vector dsp_order(4);
+    for (int kl = 0; kl < 4; kl++) {
+        if (vface == 0 || vface == 2)
+            dsp_order(kl) = kl;
+        if (vface == 1 || vface == 3)
+            dsp_order(kl) = 1-kl;
+        
+        if (dsp_order(kl) < 0)
+            dsp_order(kl) = dsp_order(kl)+4;
+    }
+
+	// rotation matrix to get the normal and shear dofs lined up
+    Matrix rot(4,4);
+    for (int kl = 0; kl < 4; kl++) {
+		if (vface == 0 || vface == 2)
+	        rot(kl,dsp_order(kl)) = vface-1;
+		
+		if (vface == 1)
+			rot(kl,dsp_order(kl)) = dsp_order(kl)-kl;
+
+		if (vface == 3)
+			rot(kl,dsp_order(kl)) = kl-dsp_order(kl);
+	}
     
     // renumber node indices so outward normal always points in positive eta direction
     vface = vface - 2;
@@ -338,8 +364,7 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
         vface++;
     }
     
-    opserr << "final node index order in natural system is " << indx[0] << " " << indx[1] << " " << indx[2] << " " << indx[3] << endln;
-    
+    //opserr << "final node index order in natural system is " << indx[0] << " " << indx[1] << " " << indx[2] << " " << indx[3] << endln;
     
     // transformation matrix
     ae.Zero();
@@ -350,6 +375,22 @@ CohesiveZoneQuad::setDomain(Domain *theDomain)
             rowno = rowno - 4;
         ae(rowno,kl+4) = 1;
     }
+	
+    
+    
+
+	//opserr << "dsp_order: " << dsp_order;
+	//opserr << "ae: " << ae;
+	//opserr << "rot: " << rot << endln;
+	
+    
+    // and the final form for transformation after rotation is multiplied
+    Matrix temp = ae;
+    temp.addMatrixProduct(0.0,rot,ae,1.0);
+    ae = temp;
+	
+	//opserr << "ae: rot*ae = " << ae;
+	
 }
 
 int
@@ -359,12 +400,30 @@ CohesiveZoneQuad::commitState()
 
     // call element commitState to do any base class stuff
     if ((retVal = this->Element::commitState()) != 0) {
-      opserr << "CohesiveZoneQuad::commitState () - failed in base class";
-    }    
-
+        opserr << "CohesiveZoneQuad::commitState () - failed in base class";
+    }
+    
+    //const Vector &eleVec = delp;
+    Information eleData;
+    //eleData.setVector(delp);
+    Vector telp(3);
+    double dvol;
+    
     // Loop over the integration points and commit the material states
-    for (int i = 0; i < 2; i++)
-      retVal += theMaterial[i]->commitState();
+    for (int i = 0; i < 2; i++) {
+        // Determine Jacobian for this integration point
+        dvol = this->shapeFunction(pts[i]);
+        dvol *= (wts[i]);
+
+        telp(0) = delp(2*i);
+        telp(1) = delp(2*i+1);
+        telp(2) = dvol;
+        eleData.setVector(telp);
+        
+        // first call sends local element forces to integration point
+        retVal += theMaterial[i]->updateState(eleData);
+        retVal += theMaterial[i]->commitState();
+    }
 
     return retVal;
 }
@@ -397,19 +456,35 @@ CohesiveZoneQuad::revertToStart()
 int
 CohesiveZoneQuad::update()
 {
-    // use reordered indices from indx
-	const Vector &disp1 = theNodes[indx[0]]->getTrialDisp();
-	const Vector &disp2 = theNodes[indx[1]]->getTrialDisp();
-	const Vector &disp3 = theNodes[indx[2]]->getTrialDisp();
-	const Vector &disp4 = theNodes[indx[3]]->getTrialDisp();
+    // use reordered indices from indx (old way)
+	//const Vector &disp1 = theNodes[indx[0]]->getTrialDisp();
+	//const Vector &disp2 = theNodes[indx[1]]->getTrialDisp();
+	//const Vector &disp3 = theNodes[indx[2]]->getTrialDisp();
+	//const Vector &disp4 = theNodes[indx[3]]->getTrialDisp();
+    
+    // combine all nodal displacements for transformation (new way)
+    Vector disp(8);
+    for (int beta = 0; beta < 4; beta++) {
+        const Vector &dispi = theNodes[indx[beta]]->getTrialDisp();
+        disp(beta*2) = dispi(0);
+        disp(beta*2+1) = dispi(1);
+    }
 	
+    // initialize relative displacements
 	Vector delu(4);
     delu.Zero();
 
-	// relative displacements, this is the transformation A * ue
-	delu(0) = disp4(0)-disp1(0);	delu(1) = disp4(1)-disp1(1);
-	delu(2) = disp3(0)-disp2(0);	delu(3) = disp3(1)-disp2(1);
+	// relative displacements, this is the transformation A * ue (old way)
+	//delu(0) = disp4(0)-disp1(0);	delu(1) = disp4(1)-disp1(1);
+	//delu(2) = disp3(0)-disp2(0);	delu(3) = disp3(1)-disp2(1);
     
+    // actually use transformation (new way)
+    delu.addMatrixVector(1.0,ae,disp,1.0);
+   	
+	//opserr << "   matrix disp: " << disp;
+	//opserr << "   matrix ae: " << ae;
+	//opserr << "   matrix delu: " << delu;
+
 	int ret = 0;
     Vector dsp(2);
 
@@ -428,7 +503,7 @@ CohesiveZoneQuad::update()
 
 		// Set the material displacements
 		ret += theMaterial[i]->setTrialStrain(dsp);
-        opserr << "   CZQuad IP" << i+1 << " has prescribed slips of " << dsp;
+        //opserr << "   CZQuad IP" << i+1 << " has prescribed slips of " << dsp << endln;
 	}
 
 	return ret;
@@ -459,7 +534,7 @@ CohesiveZoneQuad::getTangentStiff()
 
         double D00 = D(0,0); double D01 = D(0,1);
         double D10 = D(1,0); double D11 = D(1,1);
-        opserr << "inside getTangent, IP returning stiffness " << D;
+        //opserr << "inside getTangent, IP returning stiffness " << D;
 
         for (int alpha = 0; alpha < 2; alpha++) {
             int ia = alpha*2;
@@ -474,7 +549,7 @@ CohesiveZoneQuad::getTangentStiff()
             }
         }
 	}
-    opserr << delk;
+    //opserr << delk;
     
     // need A^T * k * A and then indx mapping to nodal dofs
     K.Zero();
@@ -494,7 +569,7 @@ CohesiveZoneQuad::getTangentStiff()
         }
     }
     
-	opserr << "tangent stiffness = " << K;
+	//opserr << "tangent stiffness = " << K;
 	
 	return K;
 }
@@ -591,7 +666,6 @@ const Vector&
 CohesiveZoneQuad::getResistingForce()
 {
 	double dvol;
-    Vector delp(4);
     delp.Zero();
 
 	// Loop over the integration points
@@ -603,7 +677,7 @@ CohesiveZoneQuad::getResistingForce()
 
 		// Get material stress response
 		const Vector &sigma = theMaterial[i]->getStress();
-        opserr << "   CZQuad IP" << i+1 << " returned stresses of " << sigma;
+        //opserr << "   CZQuad IP" << i+1 << " returned stresses of " << sigma;
 
 		// Perform numerical integration on internal force
 		//P = P + (N^ sigma) * intWt * detJ;
@@ -628,7 +702,7 @@ CohesiveZoneQuad::getResistingForce()
 	// Subtract other external nodal loads ... P_res = P_int - P_ext
 	//P = P - Q;
 	P.addVector(1.0, Q, -1.0);
-	opserr << "Resisting force = " << P;
+	//opserr << "Resisting force = " << P;
 
 	return P;
 }
@@ -1149,7 +1223,7 @@ double CohesiveZoneQuad::shapeFunction(double xi)
                 nd3Crds(1)*onePlusxi + nd4Crds(1)*oneMinusxi);
 
     double detJ = J[0][0]*J[1][1] - J[0][1]*J[1][0];
-    opserr << "detJ at xi = " << xi << " is " << detJ << endln;
+    //opserr << "detJ at xi = " << xi << " is " << detJ << endln;
     
     // to make loops easier, multiply by 2/h0 here
 	//double detJ = J[0]/2;

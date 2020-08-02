@@ -18,30 +18,30 @@
 **                                                                    **
 ** ****************************************************************** */
 
-#ifndef ElasticTS2D_h
-#define ElasticTS2D_h
+#ifndef PDRExponentialTS2D_h
+#define PDRExponentialTS2D_h
 
-// Written: KRM
-// Created: 09/2019
+// Written: fmk
+// Created: 10/11
 //
 // Description: 
 //
-// What: "@(#) ElasticTS2D.h, revA"
+// What: "@(#) PDRExponentialTS2D.h, revA"
 
-#include <ElasticTS.h>
+#include <PDRExponentialTS.h>
 
 #include <Matrix.h>
 #include <Vector.h>
 #include <ID.h>
 
-class ElasticTS2D : public ElasticTS
+class PDRExponentialTS2D : public PDRExponentialTS
 {
   public:
-    ElasticTS2D(int tag, double d1, double d2, double s1, double s2, double f, double cm);
-    ElasticTS2D();
-    ~ElasticTS2D();
+    PDRExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
+    PDRExponentialTS2D();
+    ~PDRExponentialTS2D();
 
-    const char *getClassType(void) const {return "ElasticTS2D";};
+    const char *getClassType(void) const {return "PDRExponentialTS2D";};
 
     int setTrialStrain (const Vector &v);
     int setTrialStrain (const Vector &v, const Vector &r);
@@ -64,7 +64,8 @@ class ElasticTS2D : public ElasticTS
 
     int sendSelf(int commitTag, Channel &theChannel);  
     int recvSelf(int commitTag, Channel &theChannel, 
-		 FEM_ObjectBroker &theBroker);   
+		 FEM_ObjectBroker &theBroker);    
+    
 
   protected:
 
@@ -91,7 +92,10 @@ class ElasticTS2D : public ElasticTS
     double ETt;
     double ETn;
     double ENt;
-    double ENn;	
+    double ENn;
+    
+    // history variables
+    double delmax;
     
 };
 

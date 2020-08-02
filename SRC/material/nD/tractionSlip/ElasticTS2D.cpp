@@ -30,9 +30,9 @@ Matrix ElasticTS2D::tangent(2,2);
 Vector ElasticTS2D::state(1);
 
 ElasticTS2D::ElasticTS2D
-(int tag, double d1, double d2, double s1, double s2, double cm) :
+(int tag, double d1, double d2, double s1, double s2, double f, double cm) :
  ElasticTS (tag, ND_TAG_ElasticTS2D,
-                d1, d2, s1, s2, cm),
+                d1, d2, s1, s2, f, cm),
  sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
@@ -41,7 +41,7 @@ ElasticTS2D::ElasticTS2D
 
 ElasticTS2D::ElasticTS2D():
  ElasticTS (0, ND_TAG_ElasticTS2D,
-                0.0, 0.0, 0.0, 0.0, 0.0),
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
@@ -94,7 +94,7 @@ ElasticTS2D::setTrialStrain (const Vector &strain)
     
     // trial stress
     Tstress = Cstress + D*deps;
-    
+
     // loading condition
     Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
     Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
@@ -212,7 +212,7 @@ NDMaterial*
 ElasticTS2D::getCopy (void)
 {
     ElasticTS2D *theCopy =
-        new ElasticTS2D (this->getTag(), delt,deln,tau_max,sig_max,cmult);
+        new ElasticTS2D (this->getTag(), delt,deln,tau_max,sig_max,phi_ang,cmult);
   
     theCopy->sigma = sigma;
     theCopy->D = D;

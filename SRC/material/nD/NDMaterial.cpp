@@ -326,7 +326,12 @@ NDMaterial::getResponse (int responseID, Information &matInfo)
   }
 }
 
-
+int
+NDMaterial::updateState (const Information &matInfo)
+{
+    opserr << "NDMaterial::updateState -- subclass responsibility\n";
+    return -1;
+}
 
 // AddingSensitivity:BEGIN ////////////////////////////////////////
 const Vector &

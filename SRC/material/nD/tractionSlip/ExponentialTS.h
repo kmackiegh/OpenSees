@@ -32,11 +32,11 @@ class ExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     ExponentialTS (int tag, int classTag,
-                   double d1, double d2, double s1, double s2, double l, double a, double b);
+                   double d1, double d2, double s1, double s2, double l, double a, double b, double kcmp);
 
     // Called by clients
     ExponentialTS (int tag,
-                   double d1, double d2, double s1, double s2, double l, double a, double b);
+                   double d1, double d2, double s1, double s2, double l, double a, double b, double k);
 
     // For parallel processing
     ExponentialTS (void);
@@ -76,7 +76,8 @@ class ExponentialTS : public NDMaterial
     
     Response *setResponse (const char **argv, int argc, OPS_Stream &output);
     int getResponse (int responseID, Information &matInformation);
-    
+    int updateState (const Information &matInfo);
+
     virtual int sendSelf(int commitTag, Channel &theChannel);  
     virtual int recvSelf(int commitTag, Channel &theChannel, 
 		 FEM_ObjectBroker &theBroker);    
@@ -94,6 +95,8 @@ class ExponentialTS : public NDMaterial
     double lambda;
     double alpha;
     double beta;
+    double kcmp;
+
     // derived
     double phit;
     double phin;

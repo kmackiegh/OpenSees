@@ -99,6 +99,7 @@ extern  void *OPS_NewLowTensionMaterial(void);
 extern  void *OPS_NewExponentialTS(void);
 extern  void *OPS_NewElasticTS(void);
 extern  void *OPS_NewBilinearTS(void);
+extern  void *OPS_NewPDRExponentialTS(void);
 extern  void *OPS_DruckerPragerMaterial(void);
 extern  void *OPS_BoundingCamClayMaterial(void);
 extern  void *OPS_ContactMaterial2DMaterial(void);
@@ -584,6 +585,14 @@ TclModelBuilderNDMaterialCommand (ClientData clientData, Tcl_Interp *interp, int
     
     else if (strcmp(argv[1],"BilinearTS") == 0) {
         void *theMat = OPS_NewBilinearTS();
+        if (theMat != 0)
+            theMaterial = (NDMaterial *)theMat;
+        else
+            return TCL_ERROR;
+    }
+    
+    else if (strcmp(argv[1],"PDRExponentialTS") == 0) {
+        void *theMat = OPS_NewPDRExponentialTS();
         if (theMat != 0)
             theMaterial = (NDMaterial *)theMat;
         else

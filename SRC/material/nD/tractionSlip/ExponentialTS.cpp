@@ -41,7 +41,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <limits>
 
 void *
 OPS_NewExponentialTS(void)
@@ -50,13 +50,13 @@ OPS_NewExponentialTS(void)
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 8) {
-        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? alpha? beta?" << endln;
+    if (numArgs < 9) {
+        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? alpha? beta? kcmp?" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[7];
+    double dData[8];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
@@ -70,7 +70,7 @@ OPS_NewExponentialTS(void)
         return 0;
     }
 
-    theMaterial = new ExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5], dData[6]);
+    theMaterial = new ExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5], dData[6], dData[7]);
 
     return theMaterial;
 }
@@ -78,9 +78,9 @@ OPS_NewExponentialTS(void)
 
 
 ExponentialTS::ExponentialTS
-(int tag, int classTag, double d1, double d2, double s1, double s2, double l, double a, double b)
+(int tag, int classTag, double d1, double d2, double s1, double s2, double l, double a, double b, double k)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), kcmp(k)
 {
     // do some input checks
     if (delt < 0)
@@ -91,26 +91,29 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b)
         tau_max = fabs(tau_max);
     if (sig_max < 0)
         sig_max = fabs(sig_max);
-    if (lambda < 0.5 || lambda > 1)
-        lambda = 1;
-    if (alpha < 0.5 || alpha > 1)
-        alpha = 1;
+    if (lambda < 0)
+        lambda = 1.0;
+    if (alpha < 0)
+        alpha = 1.0;
     if (beta <= 0)
         beta = 1.0;
     
     // derived properties
-    phit = delt/2/lambda*tau_max * pow(2*lambda*exp(1)/(2*lambda-1), 1-1/2/lambda);
-    phin = deln/alpha*sig_max * pow(alpha*exp(1)/(2*alpha-1), 2-1/alpha);
+    phit = delt/lambda*tau_max * exp(1);
+    phin = deln/alpha*sig_max * exp(1);
+
+    if (kcmp <= 0)
+        kcmp = pow(alpha,2)*phin/deln;
 }
 
 ExponentialTS::ExponentialTS
-(int tag, double d1, double d2, double s1, double s2, double l, double a, double b)
+(int tag, double d1, double d2, double s1, double s2, double l, double a, double b, double k)
   :NDMaterial(tag, ND_TAG_ExponentialTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), kcmp(k)
 {
     // derived properties
-    phit = delt/2/lambda*tau_max * pow(2*lambda*exp(1)/(2*lambda-1), 1-1/2/lambda);
-    phin = deln/alpha*sig_max * pow(alpha*exp(1)/(2*alpha-1), 2-1/alpha);
+    phit = delt/lambda*tau_max * exp(1);
+    phin = deln/alpha*sig_max * exp(1);
 }
 
 ExponentialTS::~ExponentialTS()
@@ -129,7 +132,7 @@ ExponentialTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         ExponentialTS2D *theModel;
-        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, alpha, beta);
+        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, alpha, beta, kcmp);
 
         return theModel;
     }
@@ -313,11 +316,25 @@ int ExponentialTS::getResponse (int responseID, Information &matInfo)
 }
 
 int
+ExponentialTS::updateState (const Information &matInfo)
+{
+    Vector *delp = matInfo.theVector;
+
+	// store in a local variable
+	//elmf = *matInfo.theVector;
+    
+    // Felipe, need some logic on how to update sigc and delc for Elastic (or not at all)
+    //opserr << "ElasticTS::updateState recevied force = " << elmf << endln;
+    
+    return 0;
+}
+
+int
 ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(8);
+    static Vector data(9);
 
     data(0) = this->getTag();
     data(1) = delt;
@@ -327,6 +344,7 @@ ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
     data(5) = lambda;
     data(6) = alpha;
     data(7) = beta;
+    data(8) = kcmp;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -343,7 +361,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
 {
     int res = 0;
 
-    static Vector data(8);
+    static Vector data(9);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -359,6 +377,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
     lambda = data(5);
     alpha = data(6);
     beta = data(7);
+    kcmp = data(8);
     
     return res;
 }
@@ -386,14 +405,26 @@ ExponentialTS::Shear_Envlp (double Delt, double Deln,
     
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
+
+    double e1 = exp(-alpha*Delnbar);
+    double e2 = exp(-lambda*fabs(Deltbar));
     
-    double e1 = exp(-pow(Delnbar, alpha));
-    double e2 = exp(-pow(fabs(Deltbar), 2*lambda));
-    
-    Tt = 2*lambda*phit/delt * (1+pow(Delnbar, alpha)) * Deltbar * pow(fabs(Deltbar), 2*lambda-2) * e1 * e2;
-    ETn = -2*alpha*lambda*phit/deln/delt * e1*e2 * pow(Delnbar, 2*alpha-1) * Deltbar*pow(fabs(Deltbar), 2*lambda-2);
-    ETt = 2*lambda*phit/delt/delt * e1*e2 * (1+pow(Delnbar, alpha)) * (2*lambda*(1-pow(fabs(Deltbar), 2*lambda))-1);
-    
+	double sgn = 1;	
+    if (Delt < 0) {
+	   sgn = -1;
+    }
+
+    Tt = pow(lambda,2)*phit/delt * (1+alpha*Delnbar) * Deltbar * e1*e2;
+    ETn = -pow(alpha,2)*pow(lambda,2)*phit/(deln*delt) * e1*e2 * Delnbar*Deltbar;
+    ETt = pow(lambda,2)*phit/pow(delt,2) * e1*e2 * (1+alpha*Delnbar) * (1-sgn*lambda*Deltbar);
+
+	// compression normal decoupling
+    if (Deln < 0) {
+		Tt = pow(lambda,2)*phit/delt  * Deltbar * e2;
+    	ETn = 0;
+    	ETt = pow(lambda,2)*phit/pow(delt,2) * e2 * (1-sgn*lambda*Deltbar);
+    }
+
     return;
 }
 
@@ -401,26 +432,27 @@ void
 ExponentialTS::Normal_Envlp (double Delt, double Deln,
                              double &Tn, double &ENt, double &ENn)
 {
-    // shear monotonic envelope function
+    // normal monotonic envelope function
     // unloading and reloading reflected elsewhere
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
     
-    double e1 = exp(-pow(Delnbar, alpha));
-    double e2 = exp(-pow(fabs(Deltbar), 2*lambda));
+    double e1 = exp(-alpha*Delnbar);
+    double e2 = exp(-lambda*fabs(Deltbar));
+	
+    Tn = pow(alpha,2)*phin/deln * Delnbar * (1+lambda*fabs(Deltbar)) * e1*e2;
+    ENn = pow(alpha,2)*phin/(pow(deln,2)) * e1*e2 * (1+lambda*fabs(Deltbar))*(1-alpha*Delnbar);
+	ENt = -pow(alpha,2)*pow(lambda,2)*phin/(deln*delt) * e1*e2 * Delnbar*Deltbar;
 
     // compression normal multiplier
-    double cmult = 1.0;
     if (Deln < 0) {
-        cmult = 10000.0;
-    }
-    
-    Tn = cmult * alpha*phin/deln * pow(Delnbar, 2*alpha-1) * e1 * e2;
-    ENn = cmult * alpha*phin/deln/deln * e1*e2 * pow(Delnbar, 2*alpha-2)*(1-alpha*(pow(Delnbar, alpha)-2));
-    ENt = -2*alpha*lambda*phin/deln/delt * e1*e2 * pow(Delnbar, 2*alpha-1) * Deltbar*pow(fabs(Deltbar), 2*lambda-2);
-    
+	   Tn = kcmp * Delnbar;
+	   ENn = kcmp;
+	   ENt = 0;
+    } 
+
     return;
 }
 

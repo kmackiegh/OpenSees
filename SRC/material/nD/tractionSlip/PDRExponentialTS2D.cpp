@@ -18,7 +18,7 @@
 **                                                                    **
 ** ****************************************************************** */
                                                                         
-#include <ExponentialTS2D.h>
+#include <PDRExponentialTS2D.h>
 #include <Channel.h>
 #include <Matrix.h>
 
@@ -26,36 +26,36 @@
 #include <float.h>
 #include <limits>
 
-Vector ExponentialTS2D::stress(2);
-Matrix ExponentialTS2D::tangent(2,2);
-Vector ExponentialTS2D::state(1);
+Vector PDRExponentialTS2D::stress(2);
+Matrix PDRExponentialTS2D::tangent(2,2);
+Vector PDRExponentialTS2D::state(1);
 
-ExponentialTS2D::ExponentialTS2D
-(int tag, double d1, double d2, double s1, double s2, double l, double a, double b, double k) :
- ExponentialTS (tag, ND_TAG_ExponentialTS2D,
-                d1, d2, s1, s2, l, a, b, k),
+PDRExponentialTS2D::PDRExponentialTS2D
+(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k) :
+ PDRExponentialTS (tag, ND_TAG_PDRExponentialTS2D,
+                d1, d2, s1, s2, fp, l, a, fr, sc, b, k),
  sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
 
-ExponentialTS2D::ExponentialTS2D():
- ExponentialTS (0, ND_TAG_ExponentialTS2D,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+PDRExponentialTS2D::PDRExponentialTS2D():
+ PDRExponentialTS (0, ND_TAG_PDRExponentialTS2D,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
     this->initialize();
 }
 
-ExponentialTS2D::~ExponentialTS2D ()
+PDRExponentialTS2D::~PDRExponentialTS2D ()
 {
 
 }
 
 int
-ExponentialTS2D::initialize(void)
+PDRExponentialTS2D::initialize(void)
 {
     // initialize local storage
     sigma.Zero();
@@ -91,7 +91,7 @@ ExponentialTS2D::initialize(void)
 }
 
 int
-ExponentialTS2D::setTrialStrain (const Vector &strain)
+PDRExponentialTS2D::setTrialStrain (const Vector &strain)
 {
     epsilon = strain;
     Vector deps = epsilon - Cepsilon;
@@ -101,12 +101,14 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     
     // effective displacement check
     double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
-    
+    //opserr << "LOADING (?) = " << deleff << "rat = " << deleff/delmax << endln;
+
     if (deleff >= delmax) {
         // loading condition
         Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
         Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
         delmax = deleff;
+
     } else {
         // unloading or reloading
         double ct = delmax/deleff;
@@ -114,13 +116,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
         double tETt, tETn, tENt, tENn;
         Shear_Envlp(strain(0)*ct,strain(1)*ct,tsigt,tETt,tETn);
         Normal_Envlp(strain(0)*ct,strain(1)*ct,tsign,tENt,tENn);
-        
-        // factors added to tangent, using old way
-        ETt = beta*beta*strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - beta*beta*strain(0)*strain(1)/deleff/deleff*tETn;
-        ETn = strain(1)/delmax/deleff*sigt + beta*beta*strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
-        ENt = beta*beta*strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - beta*beta*strain(0)*strain(1)/deleff/deleff*tENn;
-        ENn = strain(1)/delmax/deleff*sign + beta*beta*strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
-        
+
         // factors added to tangent, using old way
         double deffdn = strain(1)/deleff;
         double deffdt = strain(0)*beta*beta/deleff;
@@ -128,10 +124,13 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
         ETn = 1/delmax*(deffdn*tsigt + deleff*tETn);
         ENt = 1/delmax*(deffdt*tsign + deleff*tENt);
         ENn = 1/delmax*(deffdn*tsign + deleff*tENn);
-        
+
+       
         // correct above stress values
         sigt = tsigt/ct;
         sign = tsign/ct;
+
+	//opserr << "UNLOADING -RELOADING = " << deleff << "rat = " << deleff/delmax << endln;
     }
     
     // store in vector and matrix form from above
@@ -146,13 +145,13 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
 }
 
 int
-ExponentialTS2D::setTrialStrain (const Vector &strain, const Vector &rate)
+PDRExponentialTS2D::setTrialStrain (const Vector &strain, const Vector &rate)
 {
     return this->setTrialStrain(strain) ;
 }
 
 int
-ExponentialTS2D::setTrialStrainIncr (const Vector &strain)
+PDRExponentialTS2D::setTrialStrainIncr (const Vector &strain)
 {
     static Vector newStrain(2);
     newStrain = epsilon + strain;
@@ -161,20 +160,20 @@ ExponentialTS2D::setTrialStrainIncr (const Vector &strain)
 }
 
 int
-ExponentialTS2D::setTrialStrainIncr (const Vector &strain, const Vector &rate)
+PDRExponentialTS2D::setTrialStrainIncr (const Vector &strain, const Vector &rate)
 {
     return this->setTrialStrainIncr(strain);
 }
 
 const Matrix&
-ExponentialTS2D::getTangent (void)
+PDRExponentialTS2D::getTangent (void)
 {
     tangent = D;
     return tangent;
 }
 
 const Matrix&
-ExponentialTS2D::getInitialTangent (void)
+PDRExponentialTS2D::getInitialTangent (void)
 {
     sigt = 0;
     sign = 0;
@@ -196,20 +195,20 @@ ExponentialTS2D::getInitialTangent (void)
 }
 
 const Vector&
-ExponentialTS2D::getStress (void)
+PDRExponentialTS2D::getStress (void)
 {
     stress = sigma;
     return stress;
 }
 
 const Vector&
-ExponentialTS2D::getStrain (void)
+PDRExponentialTS2D::getStrain (void)
 {
     return epsilon;
 }
 
 const Vector&
-ExponentialTS2D::getState (void)
+PDRExponentialTS2D::getState (void)
 {
     // store quantities in output vector
     state(0) = delmax;
@@ -218,7 +217,7 @@ ExponentialTS2D::getState (void)
 }
 
 int
-ExponentialTS2D::commitState (void)
+PDRExponentialTS2D::commitState (void)
 {
     Cepsilon = epsilon;
     Cstress = sigma;
@@ -227,7 +226,7 @@ ExponentialTS2D::commitState (void)
 }
 
 int
-ExponentialTS2D::revertToLastCommit (void)
+PDRExponentialTS2D::revertToLastCommit (void)
 {
     epsilon = Cepsilon;
     sigma = Cstress;
@@ -236,7 +235,7 @@ ExponentialTS2D::revertToLastCommit (void)
 }
 
 int
-ExponentialTS2D::revertToStart (void)
+PDRExponentialTS2D::revertToStart (void)
 {
     this->initialize();
     
@@ -244,10 +243,10 @@ ExponentialTS2D::revertToStart (void)
 }
 
 NDMaterial*
-ExponentialTS2D::getCopy (void)
+PDRExponentialTS2D::getCopy (void)
 {
-    ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,alpha,beta,kcmp);
+    PDRExponentialTS2D *theCopy =
+        new PDRExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,phi_ang,lambda,alpha,phi_res,sig_cap,beta,kcmp);
   
     theCopy->sigma = sigma;
     theCopy->D = D;
@@ -260,21 +259,21 @@ ExponentialTS2D::getCopy (void)
 }
 
 const char*
-ExponentialTS2D::getType (void) const
+PDRExponentialTS2D::getType (void) const
 {
     return "2D";
 }
 
 int
-ExponentialTS2D::getOrder (void) const
+PDRExponentialTS2D::getOrder (void) const
 {
   return 2;
 }
 
 int 
-ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
+PDRExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 {
-    opserr << "ExponentialTS2D::sendSelf()" << endln;
+    opserr << "PDRExponentialTS2D::sendSelf()" << endln;
     static Vector data(6);
   
     // note this is incomplete, should send other vectors as well?
@@ -287,7 +286,7 @@ ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
   
     int res = theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ExponentialTS2D::sendSelf -- could not send Vector\n";
+        opserr << "PDRExponentialTS2D::sendSelf -- could not send Vector\n";
         return res;
     }
 
@@ -295,15 +294,15 @@ ExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 }
 
 int 
-ExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
+PDRExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
 					FEM_ObjectBroker &theBroker)
 {
-    opserr << "ExponentialTS2D::recvSelf()" << endln;
+    opserr << "PDRExponentialTS2D::recvSelf()" << endln;
     static Vector data(6);
   
     int res = theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
-        opserr << "ExponentialTS2D::sendSelf -- could not send Vector\n";
+        opserr << "PDRExponentialTS2D::sendSelf -- could not send Vector\n";
         return res;
     }
 

@@ -104,6 +104,7 @@ class CohesiveZoneQuad : public Element
     static Matrix K;		// Element stiffness, damping, and mass Matrix
     static Vector P;		// Element resisting force vector
     Vector Q;		        // Applied nodal loads
+    Vector delp;            // local forces after element integration
 
     double thickness;	        // Element thickness
     Vector vecn;                // outward normal vector
