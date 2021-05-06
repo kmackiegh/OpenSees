@@ -77,14 +77,12 @@ class ElasticTS : public NDMaterial
     Response *setResponse (const char **argv, int argc, OPS_Stream &output);
     int getResponse (int responseID, Information &matInformation);
     int updateState (const Information &matInformation);
-	int retrieveState (const Vector &e);
 
     virtual int sendSelf(int commitTag, Channel &theChannel);  
     virtual int recvSelf(int commitTag, Channel &theChannel, 
 		 FEM_ObjectBroker &theBroker);    
     
     void Print(OPS_Stream &s, int flag = 0);
-	void update_ShearEnergy(double &kit); 
     void Shear_Envlp (double Delt, double Deln, double &Tt, double &ETt, double &ETn);
     void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
     
@@ -101,8 +99,8 @@ class ElasticTS : public NDMaterial
     double cmult;
 	
     // derived
+    double kit;
     double kin;
-
     
   private:
 	

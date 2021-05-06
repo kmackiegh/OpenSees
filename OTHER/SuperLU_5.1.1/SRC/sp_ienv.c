@@ -14,6 +14,7 @@
  * History:             Modified from lapack routine ILAENV
  */
 #include "slu_Cnames.h"
+int input_error(char *, int *);
 
 /*! \brief
 

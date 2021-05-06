@@ -51,7 +51,7 @@ OPS_NewExponentialTS(void)
     int numArgs = OPS_GetNumRemainingInputArgs();
 
     if (numArgs < 9) {
-        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? alpha? beta? kcmp?" << endln;
+        opserr << "Want: nDMaterial ExponentialTS tag? delt? deln? tau_max? sig_max? lambda? alpha? beta? cmult?" << endln;
         return 0;
     }
 
@@ -80,7 +80,7 @@ OPS_NewExponentialTS(void)
 ExponentialTS::ExponentialTS
 (int tag, int classTag, double d1, double d2, double s1, double s2, double l, double a, double b, double k)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), kcmp(k)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), cmult(k)
 {
     // do some input checks
     if (delt < 0)
@@ -97,19 +97,20 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), kcmp
         alpha = 1.0;
     if (beta <= 0)
         beta = 1.0;
+    if (cmult <= 0)
+        cmult = 1;
     
     // derived properties
     phit = delt/lambda*tau_max * exp(1);
     phin = deln/alpha*sig_max * exp(1);
 
-    if (kcmp <= 0)
-        kcmp = pow(alpha,2)*phin/deln;
+
 }
 
 ExponentialTS::ExponentialTS
 (int tag, double d1, double d2, double s1, double s2, double l, double a, double b, double k)
   :NDMaterial(tag, ND_TAG_ExponentialTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), kcmp(k)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), lambda(l), alpha(a), beta(b), cmult(k)
 {
     // derived properties
     phit = delt/lambda*tau_max * exp(1);
@@ -132,7 +133,7 @@ ExponentialTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         ExponentialTS2D *theModel;
-        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, alpha, beta, kcmp);
+        theModel = new ExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, lambda, alpha, beta, cmult);
 
         return theModel;
     }
@@ -344,7 +345,7 @@ ExponentialTS::sendSelf (int commitTag, Channel &theChannel)
     data(5) = lambda;
     data(6) = alpha;
     data(7) = beta;
-    data(8) = kcmp;
+    data(8) = cmult;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -377,7 +378,7 @@ ExponentialTS::recvSelf (int commitTag, Channel &theChannel,
     lambda = data(5);
     alpha = data(6);
     beta = data(7);
-    kcmp = data(8);
+    cmult = data(8);
     
     return res;
 }
@@ -390,7 +391,7 @@ ExponentialTS::Print (OPS_Stream &s, int flag)
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
     s << "\tlambda: " << lambda << ", alpha: " << alpha << endln;
     s << "\tphit: " << phit << ", phin: " << phin << endln;
-    s << "\tbeta: " << beta << endln;
+    s << "\tbeta: " << beta << ", cmult: " << cmult << endln;
 
 	return;
 }
@@ -405,25 +406,21 @@ ExponentialTS::Shear_Envlp (double Delt, double Deln,
     
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
+	
+	//Delnbar = 0;
+	if (Delnbar < 0)
+		Delnbar = 0;
 
     double e1 = exp(-alpha*Delnbar);
     double e2 = exp(-lambda*fabs(Deltbar));
     
 	double sgn = 1;	
-    if (Delt < 0) {
+    if (Delt < 0)
 	   sgn = -1;
-    }
 
     Tt = pow(lambda,2)*phit/delt * (1+alpha*Delnbar) * Deltbar * e1*e2;
     ETn = -pow(alpha,2)*pow(lambda,2)*phit/(deln*delt) * e1*e2 * Delnbar*Deltbar;
     ETt = pow(lambda,2)*phit/pow(delt,2) * e1*e2 * (1+alpha*Delnbar) * (1-sgn*lambda*Deltbar);
-
-	// compression normal decoupling
-    if (Deln < 0) {
-		Tt = pow(lambda,2)*phit/delt  * Deltbar * e2;
-    	ETn = 0;
-    	ETt = pow(lambda,2)*phit/pow(delt,2) * e2 * (1-sgn*lambda*Deltbar);
-    }
 
     return;
 }
@@ -438,20 +435,34 @@ ExponentialTS::Normal_Envlp (double Delt, double Deln,
     
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
+	
+	//Deltbar = 0;
+	if (Delnbar < 0)
+		Deltbar = 0;
     
     double e1 = exp(-alpha*Delnbar);
     double e2 = exp(-lambda*fabs(Deltbar));
 	
     Tn = pow(alpha,2)*phin/deln * Delnbar * (1+lambda*fabs(Deltbar)) * e1*e2;
-    ENn = pow(alpha,2)*phin/(pow(deln,2)) * e1*e2 * (1+lambda*fabs(Deltbar))*(1-alpha*Delnbar);
+    ENn = pow(alpha,2)*phin/pow(deln,2) * e1*e2 * (1+lambda*fabs(Deltbar))*(1-alpha*Delnbar);
 	ENt = -pow(alpha,2)*pow(lambda,2)*phin/(deln*delt) * e1*e2 * Delnbar*Deltbar;
 
     // compression normal multiplier
     if (Deln < 0) {
-	   Tn = kcmp * Delnbar;
-	   ENn = kcmp;
-	   ENt = 0;
-    } 
+		//Tn = cmult * pow(alpha,2)*phin/deln * Delnbar;
+        // isn't the line below incorrect, should be deln squared?
+		ENn = cmult * pow(alpha,2)*phin/pow(deln,2);
+        Tn = ENn * Deln;
+        // Felipe is the line below necessary? You already said Deltbar is 0 if Delnbar < 0?
+		//ENt = cmult * 0;
+    }
+    
+    // smoothe the tangent in the compression transition
+    double crit_dwidth = 0.2;
+    if (Delnbar > -crit_dwidth && Delnbar < crit_dwidth) {
+        double temp = ENn;
+        ENn = (1 - erf(2*Delnbar/(2*crit_dwidth)))/2 * temp*(cmult-1) + temp;
+    }
 
     return;
 }

@@ -14,6 +14,7 @@
  */
 
 #include <metis.h>
+int SelectQueueOneWay(int, float *, float *, int, PQueueType queues[MAXNCON][2]);
 
 /*************************************************************************
 * This function computes the initial bisection of the coarsest graph
