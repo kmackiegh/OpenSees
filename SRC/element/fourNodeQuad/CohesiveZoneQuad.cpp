@@ -405,8 +405,9 @@ CohesiveZoneQuad::commitState()
     
     //const Vector &eleVec = delp;
     Information eleData;
-    //eleData.setVector(delp);
     Vector telp(3);
+	telp.Zero();
+	Vector slp(2);
     double dvol;
     
     // Loop over the integration points and commit the material states
@@ -415,8 +416,10 @@ CohesiveZoneQuad::commitState()
         dvol = this->shapeFunction(pts[i]);
         dvol *= (wts[i]);
 
-        telp(0) = delp(2*i);
-        telp(1) = delp(2*i+1);
+		slp = theMaterial[i]->getStrain();
+
+        telp(0) = delp(2*i+1);
+        telp(1) = slp(1);
         telp(2) = dvol;
         eleData.setVector(telp);
         

@@ -101,12 +101,14 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
     
     // effective displacement check
     double deleff = sqrt(beta*beta*strain(0)*strain(0)+strain(1)*strain(1));
-    
+    //opserr << "LOADING (?) = " << deleff << "rat = " << deleff/delmax << endln;
+
     if (deleff >= delmax) {
         // loading condition
         Shear_Envlp(strain(0),strain(1),sigt,ETt,ETn);
         Normal_Envlp(strain(0),strain(1),sign,ENt,ENn);
         delmax = deleff;
+
     } else {
         // unloading or reloading
         double ct = delmax/deleff;
@@ -114,13 +116,7 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
         double tETt, tETn, tENt, tENn;
         Shear_Envlp(strain(0)*ct,strain(1)*ct,tsigt,tETt,tETn);
         Normal_Envlp(strain(0)*ct,strain(1)*ct,tsign,tENt,tENn);
-        
-        // factors added to tangent, using old way
-        ETt = beta*beta*strain(0)/delmax/deleff*sigt + strain(1)*strain(1)/deleff/deleff*tETt - beta*beta*strain(0)*strain(1)/deleff/deleff*tETn;
-        ETn = strain(1)/delmax/deleff*sigt + beta*beta*strain(0)*strain(0)/deleff/deleff*tETn - strain(0)*strain(1)/deleff/deleff*tETt;
-        ENt = beta*beta*strain(0)/delmax/deleff*sign + strain(1)*strain(1)/deleff/deleff*tENt - beta*beta*strain(0)*strain(1)/deleff/deleff*tENn;
-        ENn = strain(1)/delmax/deleff*sign + beta*beta*strain(0)*strain(0)/deleff/deleff*tENn - strain(0)*strain(1)/deleff/deleff*tENt;
-        
+
         // factors added to tangent, using old way
         double deffdn = strain(1)/deleff;
         double deffdt = strain(0)*beta*beta/deleff;
@@ -128,10 +124,13 @@ ExponentialTS2D::setTrialStrain (const Vector &strain)
         ETn = 1/delmax*(deffdn*tsigt + deleff*tETn);
         ENt = 1/delmax*(deffdt*tsign + deleff*tENt);
         ENn = 1/delmax*(deffdn*tsign + deleff*tENn);
-        
+
+       
         // correct above stress values
         sigt = tsigt/ct;
         sign = tsign/ct;
+
+	//opserr << "UNLOADING -RELOADING = " << deleff << "rat = " << deleff/delmax << endln;
     }
     
     // store in vector and matrix form from above
@@ -247,7 +246,7 @@ NDMaterial*
 ExponentialTS2D::getCopy (void)
 {
     ExponentialTS2D *theCopy =
-        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,alpha,beta,kcmp);
+        new ExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,lambda,alpha,beta,cmult);
   
     theCopy->sigma = sigma;
     theCopy->D = D;

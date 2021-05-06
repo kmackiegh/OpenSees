@@ -32,11 +32,11 @@ class PDRExponentialTS : public NDMaterial
   public:
     // Only called by subclasses to pass their tags to NDMaterialModel
     PDRExponentialTS (int tag, int classTag,
-                   double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
+                   double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k);
 
     // Called by clients
     PDRExponentialTS (int tag,
-                   double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
+                   double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k);
 
     // For parallel processing
     PDRExponentialTS (void);
@@ -80,19 +80,17 @@ class PDRExponentialTS : public NDMaterial
 
     virtual int sendSelf(int commitTag, Channel &theChannel);  
     virtual int recvSelf(int commitTag, Channel &theChannel, 
-		 FEM_ObjectBroker &theBroker);    
+         FEM_ObjectBroker &theBroker);    
     
     void Print(OPS_Stream &s, int flag = 0);
+    void Frict_Envlp (double Delt, double &Tr, double &ETr);
     void Shear_Envlp (double Delt, double Deln, double &Tt, double &ETt, double &ETn);
     void Normal_Envlp (double Delt, double Deln, double &Tn, double &ENt, double &ENn);
-/**/
-	void update_ShearEnergy (double &tau_ult, double &tau_res, double &phit_new);
-	void residual_slip (double Delnbar, double tau_ult, double tau_res, double &del_res);
-/**/
+    
     
   protected:
-	// passed as element info
-	Vector elmf;
+    // passed as element info
+    Vector elmf;
 
     // passed as arguments
     double delt;
@@ -102,15 +100,14 @@ class PDRExponentialTS : public NDMaterial
     double phi_ang;
     double lambda;
     double alpha;
-    double phi_res;
     double sig_cap;
     double beta;
-    double kcmp;
+    double cmult;
 
     // derived
-    double del_res;
-	//double phit;
+    double phit;
     double phin;
+    double sigma_cmp;
     
   private:
 

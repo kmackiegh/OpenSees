@@ -37,7 +37,7 @@
 class PDRExponentialTS2D : public PDRExponentialTS
 {
   public:
-    PDRExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k);
+    PDRExponentialTS2D(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k);
     PDRExponentialTS2D();
     ~PDRExponentialTS2D();
 
@@ -64,7 +64,7 @@ class PDRExponentialTS2D : public PDRExponentialTS
 
     int sendSelf(int commitTag, Channel &theChannel);  
     int recvSelf(int commitTag, Channel &theChannel, 
-		 FEM_ObjectBroker &theBroker);    
+         FEM_ObjectBroker &theBroker);    
     
 
   protected:
@@ -72,8 +72,8 @@ class PDRExponentialTS2D : public PDRExponentialTS
   private:
     int initialize(void);
     
-    static Vector stress;	// Stress vector ... class-wide for returns
-    static Matrix tangent;	// Elastic constants ... class-wide for returns
+    static Vector stress;   // Stress vector ... class-wide for returns
+    static Matrix tangent;  // Elastic constants ... class-wide for returns
     static Vector state;    // vector for recorders ... class-wide for returns
     
     // local plane stress storage
@@ -83,7 +83,7 @@ class PDRExponentialTS2D : public PDRExponentialTS
     Vector epsilon;         // Trial strains
     
     // committed storage
-    Vector Cepsilon;	    // Committed strain
+    Vector Cepsilon;        // Committed strain
     Vector Cstress;         // Committed stress
     
     // some local storage for passing into envelopes

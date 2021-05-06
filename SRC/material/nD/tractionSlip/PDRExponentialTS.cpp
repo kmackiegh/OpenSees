@@ -50,13 +50,13 @@ OPS_NewPDRExponentialTS(void)
 
     int numArgs = OPS_GetNumRemainingInputArgs();
 
-    if (numArgs < 10) {
-        opserr << "Want: nDMaterial PDRExponentialTS tag? delt? deln? tau_max? sig_max? phi_ang? lambda? alpha?  phi_res? sig_cap? beta? kcmp?" << endln;
+    if (numArgs < 9) {
+        opserr << "Want: nDMaterial PDRExponentialTS tag? delt? deln? tau_max? sig_max? phi_ang? lambda? alpha? sig_cap? beta? cmult?" << endln;
         return 0;
     }
 
     int iData[1];
-    double dData[11];
+    double dData[10];
 
     int numData = 1;
     if (OPS_GetInt(&numData, iData) != 0) {
@@ -70,7 +70,7 @@ OPS_NewPDRExponentialTS(void)
         return 0;
     }
 
-    theMaterial = new PDRExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5], dData[6], dData[7], dData[8], dData[9], dData[10]);
+    theMaterial = new PDRExponentialTS(iData[0], dData[0], dData[1], dData[2], dData[3], dData[4], dData[5], dData[6], dData[7], dData[8], dData[9]);
 
     return theMaterial;
 }
@@ -78,9 +78,9 @@ OPS_NewPDRExponentialTS(void)
 
 
 PDRExponentialTS::PDRExponentialTS
-(int tag, int classTag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k)
+(int tag, int classTag, double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k)
   :NDMaterial(tag, classTag), 
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(fp), lambda(l), alpha(a), phi_res(fr), sig_cap(sc), beta(b), kcmp(k)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(fp), lambda(l), alpha(a), sig_cap(sc), beta(b), cmult(k)
 {
     // do some input checks
     if (delt < 0)
@@ -97,36 +97,38 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(fp), lambda(l), alpha(a), 
         alpha = 1.0;
     if (phi_ang < 0)
         phi_ang = fabs(phi_ang);
-    if (phi_res < 0)
-        phi_res = fabs(phi_res);
     if (sig_cap == 0)
         sig_cap = -1e6*sig_max;
     if (sig_cap > 0)
         sig_cap = -sig_cap;
     if (beta <= 0)
         beta = 1.0;
+    if (cmult < 1.0)
+        cmult = 1.0;
     
     // derived properties
-    //phit = delt/lambda*tau_max * exp(1);
+    phit = delt/lambda*tau_max * exp(1);
     phin = deln/alpha*sig_max * exp(1);
 
-    if (kcmp <= 0)
-        kcmp = pow(alpha,2)*phin/deln;
+    sigma_cmp = 0;
+    
 }
 
 PDRExponentialTS::PDRExponentialTS
-(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k)
+(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k)
   :NDMaterial(tag, ND_TAG_PDRExponentialTS),
-delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(fp), lambda(l), alpha(a), phi_res(fr), sig_cap(sc), beta(b), kcmp(k)
+delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(fp), lambda(l), alpha(a), sig_cap(sc), beta(b), cmult(k)
 {
     // derived properties
-    //phit = delt/lambda*tau_max * exp(1);
+    phit = delt/lambda*tau_max * exp(1);
     phin = deln/alpha*sig_max * exp(1);
+
+    sigma_cmp = 0;
 }
 
 PDRExponentialTS::~PDRExponentialTS()
 {
-	
+    
 }
 
 double
@@ -140,7 +142,7 @@ PDRExponentialTS::getCopy (const char *type)
 {
     if (strcmp(type,"2D") == 0 || strcmp(type,"2d") == 0) {
         PDRExponentialTS2D *theModel;
-        theModel = new PDRExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, phi_ang, lambda, alpha, phi_res, sig_cap, beta, kcmp);
+        theModel = new PDRExponentialTS2D (this->getTag(), delt, deln, tau_max, sig_max, phi_ang, lambda, alpha, sig_cap, beta, cmult);
 
         return theModel;
     }
@@ -285,78 +287,86 @@ PDRExponentialTS::getOrder (void) const
 Response*
 PDRExponentialTS::setResponse (const char **argv, int argc, OPS_Stream &output)
 {
-	const char *matType = this->getType();
+    const char *matType = this->getType();
     
-	output.tag("NdMaterialOutput");
-	output.attr("matType",this->getClassType());
-	output.attr("matTag",this->getTag());
+    output.tag("NdMaterialOutput");
+    output.attr("matType",this->getClassType());
+    output.attr("matTag",this->getTag());
     
-	if (strcmp(argv[0],"stress") == 0 || strcmp(argv[0],"stresses") == 0)
-		return new MaterialResponse(this, 1, this->getStress());
-	else if (strcmp(argv[0],"slip") == 0 || strcmp(argv[0],"deformation") == 0)
-		return new MaterialResponse(this, 2, this->getStrain());
-	else if (strcmp(argv[0],"state") == 0)
-		return new MaterialResponse(this, 3, this->getState());
-	else
-		return 0;
+    if (strcmp(argv[0],"stress") == 0 || strcmp(argv[0],"stresses") == 0)
+        return new MaterialResponse(this, 1, this->getStress());
+    else if (strcmp(argv[0],"slip") == 0 || strcmp(argv[0],"deformation") == 0)
+        return new MaterialResponse(this, 2, this->getStrain());
+    else if (strcmp(argv[0],"state") == 0)
+        return new MaterialResponse(this, 3, this->getState());
+    else
+        return 0;
 }
 
 int PDRExponentialTS::getResponse (int responseID, Information &matInfo)
 {
-	switch (responseID) {
-		case -1:
-			return -1;
-		case 1:
-			if (matInfo.theVector != 0)
-				*(matInfo.theVector) = getStress();
-			return 0;
-		case 2:
-			if (matInfo.theVector != 0)
-				*(matInfo.theVector) = getStrain();
-			return 0;
-		case 3:
-			if (matInfo.theVector != 0)
-				*(matInfo.theVector) = getState();
-			return 0;
-		default:
-			return -1;
-	}
+    switch (responseID) {
+        case -1:
+            return -1;
+        case 1:
+            if (matInfo.theVector != 0)
+                *(matInfo.theVector) = getStress();
+            return 0;
+        case 2:
+            if (matInfo.theVector != 0)
+                *(matInfo.theVector) = getStrain();
+            return 0;
+        case 3:
+            if (matInfo.theVector != 0)
+                *(matInfo.theVector) = getState();
+            return 0;
+        default:
+            return -1;
+    }
 }
 
 int
 PDRExponentialTS::updateState (const Information &matInfo)
 {
-    Vector *delp = matInfo.theVector;
-
-	// store in a local variable
-	elmf = *delp;
-  
-    // Felipe, need some logic on how to update sigc and delc for Elastic (or not at all)
-    //opserr << "ElasticTS::updateState recevied force = " << elmf << endln;
+    elmf = *matInfo.theVector;
     
+    double area = 0; 
+    if (elmf.Size() != 0) {
+        area = elmf(2);
+        sigma_cmp = elmf(0)/area;
+    }
+
+    // tension cut-off:
+    if (sigma_cmp > 0)
+        sigma_cmp = 0;
+
+    // Compression cap:
+    if (sigma_cmp < sig_cap)
+        sigma_cmp = sig_cap;
+
+    //opserr << "\tsigma = " << elmf(0) << " area = " << area << " = " << sigma_cmp << endln;
+        
     return 0;
 }
-
 
 int
 PDRExponentialTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(12);
+    static Vector data(11);
 
     data(0) = this->getTag();
     data(1) = delt;
     data(2) = deln;
     data(3) = tau_max;
     data(4) = sig_max;
-	data(5) = phi_ang;
+    data(5) = phi_ang;
     data(6) = lambda;
     data(7) = alpha;
-	data(8) = phi_res;
-	data(9) = sig_cap;
-    data(10) = beta;
-    data(11) = kcmp;
+    data(8) = sig_cap;
+    data(9) = beta;
+    data(10) = cmult;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -369,11 +379,11 @@ PDRExponentialTS::sendSelf (int commitTag, Channel &theChannel)
 
 int
 PDRExponentialTS::recvSelf (int commitTag, Channel &theChannel,
-				    FEM_ObjectBroker &theBroker)
+                    FEM_ObjectBroker &theBroker)
 {
     int res = 0;
 
-    static Vector data(12);
+    static Vector data(11);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -389,10 +399,9 @@ PDRExponentialTS::recvSelf (int commitTag, Channel &theChannel,
     phi_ang = data(5);
     lambda = data(6);
     alpha = data(7);
-	phi_res = data(8);
-    sig_cap = data(9);
-    beta = data(10);
-    kcmp = data(11);
+    sig_cap = data(8);
+    beta = data(9);
+    cmult = data(10);
     
     return res;
 }
@@ -400,14 +409,45 @@ PDRExponentialTS::recvSelf (int commitTag, Channel &theChannel,
 void
 PDRExponentialTS::Print (OPS_Stream &s, int flag)
 {
-	s << "Exponential Traction Slip Material Model" << endln;
-	s << "\tdelt: " << delt << ", deln: " << deln << endln;
+    s << "Exponential Traction Slip Material Model" << endln;
+    s << "\tdelt: " << delt << ", deln: " << deln << endln;
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << ", sig_cap: " << sig_cap << endln;
     s << "\tlambda: " << lambda << ", alpha: " << alpha << endln;
     s << "\tphi_ang: " << phi_ang << ", phin: " << phin << endln;
-    s << "\tphi_res: " << phi_res << ", beta: " << beta << endln;
+    s << "\tbeta: " << beta << endln;
 
-	return;
+    return;
+}
+
+void
+PDRExponentialTS::Frict_Envlp (double Delt, double &Tr, double &ETr)
+{
+    // frcition monotonic function
+    // takes current Delt and returns Tr and damage
+    // Coulomb's Law envelope tau = sigma*tan(phi_ang);
+    
+    double Deltbar = Delt/delt;
+    double e2 = exp(-lambda*fabs(Deltbar));
+    
+    double sgn = 1; 
+    if (Delt < 0) {
+       sgn = -1;
+    }
+
+    double pi = acos(-1.0);
+    double phi = pi*phi_ang/180;
+
+    Tr = 0;
+    ETr = 0;                    
+    if (sigma_cmp < 0) {                                     // if compression
+        double d = sgn * (1 - e2);
+        Tr = fabs(sigma_cmp)*tan(phi) * d;
+        ETr = lambda * fabs(sigma_cmp)*tan(phi);
+        //opserr << "\tsigma = " << sigma_cmp << " d = " << d <<  endln;
+        //opserr << "\tTr = " << Tr << " ETr = " << ETr <<  endln;
+    }
+
+    return;
 }
 
 void
@@ -421,53 +461,23 @@ PDRExponentialTS::Shear_Envlp (double Delt, double Deln,
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
 
+    double sgn = 1; 
+    if (Delt < 0)
+       sgn = -1;
+    
+    if (Delnbar < 0)
+        Delnbar = 0;
+
     double e1 = exp(-alpha*Delnbar);
     double e2 = exp(-lambda*fabs(Deltbar));
-    
-    double sgn = 1;	
-    if (Delt < 0) {
-	   sgn = -1;
-    }
 
-/**/
-	// account for confinment
-	double tau_ult = tau_max;
-	double tau_res = 0; 
-	double phit = delt/lambda*tau_ult * exp(1);
-	if (Delnbar < 0)
-		update_ShearEnergy(tau_ult, tau_res, phit);
-	
-	// account for residual slip
-	residual_slip(Delnbar, tau_ult, tau_res, del_res);
+    double Tr = 0;
+    double ETr = 0;
+    Frict_Envlp(Delt, Tr, ETr);
 
-	//opserr << "Shear_Envlp computed phit = " << phit << " and del_res " << del_res << endln;	
-/*/	
-	
-	double del_res = 10000;	
-
-/**/
-
-    if (fabs(Deltbar) > del_res && Deln < 0) { // (if Deln > 0, no residual)
-		//opserr << "PDRExponentialTS::Shear_Envlp () - residual state! " << endln;
-		Tt = sgn*tau_res;
-        ETn = 0;
-        ETt = 0;
-    } else if (fabs(Deltbar) <= del_res && Deln < 0) { // (compression normal decoupling)
-		//opserr << "PDRExponentialTS::Shear_Envlp () - normal decoupling. NO RESIDUAL " << endln;
-		Tt = pow(lambda,2)*phit/delt  * Deltbar * e2;
-    	ETn = 0;
-    	ETt = pow(lambda,2)*phit/pow(delt,2) * e2 * (1-sgn*lambda*Deltbar);
-    } else if (tau_res == 0) { // (exponetialTS)
-		//opserr << "PDRExponentialTS::Shear_Envlp () - Shear/Tension.. !" << endln;
-		Tt = pow(lambda,2)*phit/delt * (1+alpha*Delnbar) * Deltbar * e1*e2;
-        ETn = -pow(alpha,2)*pow(lambda,2)*phit/(deln*delt) * e1*e2 * Delnbar*Deltbar;
-        ETt = pow(lambda,2)*phit/pow(delt,2) * e1*e2 * (1+alpha*Delnbar) * (1-sgn*lambda*Deltbar);
-	} else {
-		opserr << "PDRExponentialTS::Shear_Envlp () - residual stress no allowed for tension " << endln;
-		opserr << "del_res: " << del_res << " tau_res: " << tau_res << " Delnbar " << Delnbar << endln;
-		exit(-1);
-	}
-    
+    Tt = pow(lambda,2)*phit/delt * (1+alpha*Delnbar) * Deltbar * e1*e2 + Tr;
+    ETn = -pow(alpha,2)*pow(lambda,2)*phit/(deln*delt) * e1*e2 * Delnbar*Deltbar;
+    ETt = pow(lambda,2)*phit/pow(delt,2) * e1*e2 * (1+alpha*Delnbar) * (1-sgn*lambda*Deltbar) + ETr;
 
     return;
 }
@@ -483,163 +493,32 @@ PDRExponentialTS::Normal_Envlp (double Delt, double Deln,
     double Deltbar = Delt/delt;
     double Delnbar = Deln/deln;
     
+    double sgn = 1; 
+    if (Delt < 0)
+       sgn = -1;
+    if (Delnbar < 0)
+        Deltbar = 0;
+    
     double e1 = exp(-alpha*Delnbar);
     double e2 = exp(-lambda*fabs(Deltbar));
-	
-	double sgn = 1;	
-    if (Delt < 0) {
-	   sgn = -1;
-    }
-	
-	//double del_res = 10000;
-
-    // account for residual shear strength
-    if (fabs(Deltbar) > del_res) {
-        Deltbar = sgn*del_res/delt;
-		e2 = exp(-lambda*fabs(Deltbar));
-
-        ENt = 0;
-    } else {
-        ENt = -pow(alpha,2)*pow(lambda,2)*phin/(deln*delt) * e1*e2 * Delnbar*Deltbar;
-    }
-
+    
     Tn = pow(alpha,2)*phin/deln * Delnbar * (1+lambda*fabs(Deltbar)) * e1*e2;
-    ENn = pow(alpha,2)*phin/(pow(deln,2)) * e1*e2 * (1+lambda*fabs(Deltbar))*(1-alpha*Delnbar);
+    ENn = pow(alpha,2)*phin/pow(deln,2) * e1*e2 * (1+lambda*fabs(Deltbar))*(1-alpha*Delnbar);
+    ENt = -pow(alpha,2)*pow(lambda,2)*phin/(deln*delt) * e1*e2 * Delnbar*Deltbar;
 
     // compression normal multiplier
     if (Deln < 0) {
-	   	Tn = kcmp * Delnbar;
-	   	ENn = kcmp;
-	   	ENt = 0;
+        ENn = cmult * pow(alpha,2)*phin/pow(deln,2);
+        Tn = ENn * Deln;
+    }
+    
+    // smoothe the tangent in the compression transition
+    double crit_dwidth = (1/alpha)*0.2;
+    if (Delnbar > -crit_dwidth && Delnbar < crit_dwidth) {
+        double temp = ENn;
+        ENn = (1 - erf(2*Delnbar/crit_dwidth))/2 * temp*(cmult-1) + temp;
     }
 
     return;
 }
-
-/**/
-void
-PDRExponentialTS::update_ShearEnergy (double &tau_ult, double &tau_res, double &phit_new)
-{
-	// shear monotonic update function
-	// takes current kit and returns it updated
-	// Mohr-Coulomb envelope tau = c + sigma*tan(phi_ang);
-	
-	//opserr << "ShearEnergy elmf = " << elmf << endln;	
-
-	double pi = 3.14159265359;
-	double phip = pi*phi_ang/180;
-	double phir = pi*phi_res/180;
-
-	double sig_max = 0;
-	double sig_min = 0;
-	double sigma = 0;
-	if (elmf.Size() != 0) {
-		//int i = intp(1);
-		double area = elmf(2);
-
-		//sig_max = std::max(elmf(0),elmf(1))/area;
-		//sig_min = std::min(elmf(0),elmf(1))/area;
-
-		sigma = elmf(1)/area;
-	}
-
-	// tension cut-off:
-	if (sig_min > 0)
-		sig_min = 0;
-	if (sig_max > 0)
-		sig_min = 0;
-	if (sigma > 0)
-		sigma = 0;
-	
-	// failure parameters
-	double fang = pi/2 + phip;									
-	//double fsig = (sig_max+sig_min)/2 + (sig_max-sig_min)/2 * cos(2*fang);
-	double fsig = sigma;
-
-	// Compression cap:
-	if (fsig < sig_cap)
-		fsig = sig_cap;
-
-	tau_ult = tau_max;
-	tau_res = 0;					
-	if (fsig < 0) {										// if compression
-        tau_ult = tau_max - fsig*tan(phip);					// tau @failure
-		tau_res = fabs(fsig)*tan(phir);
-        //opserr << "\tfsigma = " << fsig << " ftau = " << tau_ult/tau_max << endln;
-		//opserr << "\ttau_res = " << tau_res << endln;
-	}
-
-    phit_new = delt/lambda*tau_ult * exp(1);
-	//opserr << "\t\tdelt = " << delt << " lambda = " << lambda << " tau_ult = " << tau_ult << endln;	
-
-	return;
-}
-
-/**/
-
-
-void
-PDRExponentialTS::residual_slip (double Delnbar, double tau_ult, double tau_res, double &del_res)
-{
-	// solves del_res for current shear tractions
-	// Use newton to solve exponential equation
-	// Initial step: del_res=2/lambda;
-
-	// del_res = inf when tau_res = 0
-	del_res = 1e19/lambda;
-	if (tau_res == 0)
-		return;
-	if (Delnbar >= 0)
-		return;
-	
-	// compression normal decoupling; if Delnbar > 0; tau_res = 0
-	// Only residual for compression loading...
-	if (Delnbar < 0)
-		Delnbar = 0;
-	
-	// constant: General expression
-	double c = 	exp(alpha*Delnbar-1)/(1+alpha*Delnbar) * tau_res/(tau_ult*lambda);
-
-	double F = 0;
-	double J = 1;
-
-	double sgn = 1; 
-	double res = 2/lambda;
-	double err = 1;
-	int i = 0;
-	
-	while (err > 1e-10 && i < 100) {
-		// equation to solve
-		F = res*exp(-lambda*fabs(res)) - c;
-
-		// sign function
-		sgn = 1;
-		if (res < 0)
-			sgn = -1;
-
-		// Jacobian:
-		J = exp(-lambda*fabs(res)) * (1 - lambda*sgn*res);
-	 
-		// find next res:
-		res = res - F / J;
-
-		// update
-		err = abs(res*exp(-lambda*fabs(res)) - c);
-
-		// increase stack
-		i++;
-	}
-	
-	del_res = res;
-
-	if (err > 1e-10) {
-		opserr << "DRExponentialTS::Shear_Envlp () - error in covergence" << endln;
-		opserr  << "\terr = " << err << " i = " << i << endln;
-		opserr << "\tsig_cap = " << sig_cap << " tau_res = " << tau_res << endln;
-	}
-
-	return;
-} 
-
-/**/
 

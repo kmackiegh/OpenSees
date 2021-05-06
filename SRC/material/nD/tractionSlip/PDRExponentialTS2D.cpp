@@ -31,9 +31,9 @@ Matrix PDRExponentialTS2D::tangent(2,2);
 Vector PDRExponentialTS2D::state(1);
 
 PDRExponentialTS2D::PDRExponentialTS2D
-(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double fr, double sc, double b, double k) :
+(int tag, double d1, double d2, double s1, double s2, double fp, double l, double a, double sc, double b, double k) :
  PDRExponentialTS (tag, ND_TAG_PDRExponentialTS2D,
-                d1, d2, s1, s2, fp, l, a, fr, sc, b, k),
+                d1, d2, s1, s2, fp, l, a, sc, b, k),
  sigma(2), Tstress(2), D(2,2), epsilon(2),
  Cepsilon(2), Cstress(2)
 {
@@ -42,7 +42,7 @@ PDRExponentialTS2D::PDRExponentialTS2D
 
 PDRExponentialTS2D::PDRExponentialTS2D():
  PDRExponentialTS (0, ND_TAG_PDRExponentialTS2D,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 sigma(2), Tstress(2), D(2,2), epsilon(2),
 Cepsilon(2), Cstress(2)
 {
@@ -130,7 +130,7 @@ PDRExponentialTS2D::setTrialStrain (const Vector &strain)
         sigt = tsigt/ct;
         sign = tsign/ct;
 
-	//opserr << "UNLOADING -RELOADING = " << deleff << "rat = " << deleff/delmax << endln;
+    //opserr << "UNLOADING -RELOADING = " << deleff << "rat = " << deleff/delmax << endln;
     }
     
     // store in vector and matrix form from above
@@ -246,7 +246,7 @@ NDMaterial*
 PDRExponentialTS2D::getCopy (void)
 {
     PDRExponentialTS2D *theCopy =
-        new PDRExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,phi_ang,lambda,alpha,phi_res,sig_cap,beta,kcmp);
+        new PDRExponentialTS2D (this->getTag(), delt,deln,tau_max,sig_max,phi_ang,lambda,alpha,sig_cap,beta,cmult);
   
     theCopy->sigma = sigma;
     theCopy->D = D;
@@ -295,7 +295,7 @@ PDRExponentialTS2D::sendSelf(int commitTag, Channel &theChannel)
 
 int 
 PDRExponentialTS2D::recvSelf(int commitTag, Channel &theChannel,
-					FEM_ObjectBroker &theBroker)
+                    FEM_ObjectBroker &theBroker)
 {
     opserr << "PDRExponentialTS2D::recvSelf()" << endln;
     static Vector data(6);

@@ -105,6 +105,7 @@ class CohesiveZoneQuad : public Element
     static Vector P;		// Element resisting force vector
     Vector Q;		        // Applied nodal loads
     Vector delp;            // local forces after element integration
+    Vector slp;         	// local slips after element integration
 
     double thickness;	        // Element thickness
     Vector vecn;                // outward normal vector

@@ -97,7 +97,7 @@ delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(f), cmult(cm)
         cmult = 1.0;
     
     // derived properties
-    //kit = tau_max/delt;
+    kit = tau_max/delt;
     kin = sig_max/deln;
 }
 
@@ -107,7 +107,7 @@ ElasticTS::ElasticTS
 delt(d1), deln(d2), tau_max(s1), sig_max(s2), phi_ang(f), cmult(cm)
 {
     // derived properties
-    //kit = tau_ult/delt;
+    kit = tau_max/delt;
     kin = sig_max/deln;
 }
 
@@ -318,15 +318,32 @@ ElasticTS::updateState (const Information &matInfo)
 	// store in a local variable
 	elmf = *matInfo.theVector;
     
-    // Felipe, need some logic on how to update sigc and delc for Elastic (or not at all)
    // opserr << "ElasticTS::updateState recevied force = " << elmf << endln;
     
-    return 0;
-}
+    double pi = acos(-1.0);
+    double phi = pi*phi_ang/180;
 
-int
-ElasticTS::retrieveState (const Vector &elmf)
-{   
+    double sigma = 0;
+    if (elmf.Size() != 0) {
+        double vol = elmf(2);
+        sigma = elmf(0)/vol;
+    }
+
+    // tension cut-off:
+    if (sigma > 0)
+        sigma = 0;
+
+    // Compression cap:
+    // empty for elasticTS
+
+    double tau_ult = tau_max;
+    if (sigma <= 0) {                                        // if compression
+        tau_ult = tau_max - sigma*tan(phi);                    // tau @failure
+        //opserr << "fsigma = " << sigma << " ftau = " << tau_ult/tau_max << endln;
+    }
+
+    kit = tau_ult/delt;
+    
     return 0;
 }
 
@@ -335,7 +352,7 @@ ElasticTS::sendSelf (int commitTag, Channel &theChannel)
 {
     int res = 0;
 
-    static Vector data(7);
+    static Vector data(9);
 
     data(0) = this->getTag();
     data(1) = delt;
@@ -344,6 +361,8 @@ ElasticTS::sendSelf (int commitTag, Channel &theChannel)
     data(4) = sig_max;
 	data(5) = phi_ang;
 	data(6) = cmult;
+    data(7) = kit;
+    data(8) = kin;
 
     res += theChannel.sendVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -360,7 +379,7 @@ ElasticTS::recvSelf (int commitTag, Channel &theChannel,
 {
     int res = 0;
 
-    static Vector data(7);
+    static Vector data(9);
 
     res += theChannel.recvVector(this->getDbTag(), commitTag, data);
     if (res < 0) {
@@ -375,6 +394,8 @@ ElasticTS::recvSelf (int commitTag, Channel &theChannel,
     sig_max = data(4);
 	phi_ang = data(5);
 	cmult = data(6);
+    kit = data(7);
+    kin = data(8);
     
     return res;
 }
@@ -385,7 +406,7 @@ ElasticTS::Print (OPS_Stream &s, int flag)
 	s << "Elastic Traction Slip Material Model" << endln;
 	s << "\tdelt: " << delt << ", deln: " << deln << endln;
     s << "\ttau_max: " << tau_max << ", sig_max: " << sig_max << endln;
-    s << "\tphi_ang: " << phi_ang << ", kin: " << kin << endln;
+    s << "\tphi_ang: " << phi_ang << ", kit: " << kit << ", kin: " << kin << endln;
 
 	return;
 }
@@ -397,9 +418,6 @@ ElasticTS::Shear_Envlp (double Delt, double Deln,
     // shear monotonic envelope function
     // takes current Deln and Delt and returns Tt and dTt/Deln, dTt/Delt
     
-	double kit = 0; 
-	update_ShearEnergy(kit);
-
     Tt = kit*Delt;
     ETn = 0;
     ETt = kit;
@@ -423,60 +441,9 @@ ElasticTS::Normal_Envlp (double Delt, double Deln,
 	// compression:
 	if (Deln < 0) {
 		Tn = cmult*kin*Deln;
-		ENn = cmult*kin*Deln;
+		ENn = cmult*kin;
 		ENt = 0;
 	}
     
     return;
-}
-
-void
-ElasticTS::update_ShearEnergy (double &kit_new)
-{
-	// shear monotonic update function
-	// takes current kit and returns it updated
-	// Mohr-Coulomb envelope tau = c + sigma*tan(phi_ang);
-	
-	//opserr << "ShearEnergy elmf = " << elmf << endln;	
-
-	double pi = 3.14159265359;
-	double phi = pi*phi_ang/180;
-
-	double sig_max = 0;
-	double sig_min = 0;
-	double sigma = 0;
-	if (elmf.Size() != 0) {
-		//int i = intp(1);
-		double area = elmf(2);
-		
-		sig_max = std::max(elmf(0),elmf(1))/area;
-		sig_min = std::min(elmf(0),elmf(1))/area;
-		sigma = elmf(1)/area;
-	}
-
-	// tension cut-off:
-	if (sig_min > 0)
-		sig_min = 0;
-	if (sig_max > 0)
-		sig_min = 0;
-	if (sigma > 0)
-		sigma = 0;
-	
-	// failure parameters
-	double fang = pi/2 + phi;									
-	//double fsig = (sig_max+sig_min)/2 + (sig_max-sig_min)/2 * cos(2*fang);
-	double fsig = sigma;
-
-	// Compression cap:
-	// none for elasticTS
-
-	double tau_ult = tau_max;					
-	if (fsig <= 0) {										// if compression
-        tau_ult = tau_max - fsig*tan(phi);					// tau @failure
-        //opserr << "fsigma = " << fsig << " ftau = " << tau_ult/tau_max << endln;
-	}
-
-    kit_new = tau_ult/delt;
-
-	return;
 }
