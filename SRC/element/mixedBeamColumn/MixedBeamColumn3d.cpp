@@ -1411,7 +1411,18 @@ Response* MixedBeamColumn3d::setResponse(const char **argv, int argc,
              strcmp(argv[0],"numberOfSections") == 0 ) {
     theResponse =  new ElementResponse(this, 103, Vector(1));
 
-  } else if (strcmp(argv[0],"section") ==0) {
+  }
+
+    else if (strcmp(argv[0],"xaxis") == 0 || strcmp(argv[0],"xlocal") == 0)
+      theResponse = new ElementResponse(this, 201, Vector(3));
+
+    else if (strcmp(argv[0],"yaxis") == 0 || strcmp(argv[0],"ylocal") == 0)
+      theResponse = new ElementResponse(this, 202, Vector(3));
+
+    else if (strcmp(argv[0],"zaxis") == 0 || strcmp(argv[0],"zlocal") == 0)
+      theResponse = new ElementResponse(this, 203, Vector(3));  
+
+  else if (strcmp(argv[0],"section") ==0) {
     if (argc > 2) {
 
       int sectionNum = atoi(argv[1]);
@@ -1544,9 +1555,25 @@ int MixedBeamColumn3d::getResponse(int responseID, Information &eleInfo) {
     tempVector(0) = numSections;
     return eleInfo.setVector(tempVector);
 
-  } else {
-    return -1;
+  }
 
+  else if (responseID >= 201 && responseID <= 203) {
+    static Vector xlocal(3);
+    static Vector ylocal(3);
+    static Vector zlocal(3);
+
+    crdTransf->getLocalAxes(xlocal,ylocal,zlocal);
+    
+    if (responseID == 201)
+      return eleInfo.setVector(xlocal);
+    if (responseID == 202)
+      return eleInfo.setVector(ylocal);
+    if (responseID == 203)
+      return eleInfo.setVector(zlocal);    
+  }
+
+  else {
+    return -1;
   }
 }
 
@@ -1898,4 +1925,15 @@ int MixedBeamColumn3d::recvSelf(int commitTag, Channel &theChannel,
   // @todo write MixedBeamColumn3d::recvSelf
   opserr << "Error: MixedBeamColumn3d::sendSelf -- not yet implemented for MixedBeamColumn3d element";
   return -1;
+}
+
+int MixedBeamColumn3d::displaySelf(Renderer& theViewer, int displayMode, float fact, const char** modes, int numMode)
+{
+    static Vector v1(3);
+    static Vector v2(3);
+
+    theNodes[0]->getDisplayCrds(v1, fact, displayMode);
+    theNodes[1]->getDisplayCrds(v2, fact, displayMode);
+
+    return theViewer.drawLine(v1, v2, 1.0, 1.0, this->getTag());
 }
